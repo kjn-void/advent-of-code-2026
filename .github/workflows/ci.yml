@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    name: Lint and test
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # swift-format output and compiler warnings change between Xcode releases, so use the newest
+      # Xcode on the image (closest to what the code is developed with).
+      - name: Select newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app \
+            | sed -E 's|^(.*/Xcode_([0-9.]+)[^/]*\.app)$|\2 \1|' \
+            | sort -t. -k1,1n -k2,2n -k3,3n | tail -1 | cut -d' ' -f2-)
+          echo "Using $xcode"
+          sudo xcode-select -s "$xcode/Contents/Developer"
+          xcodebuild -version
+          swift --version
+
+      # Since Xcode 26 the Metal compiler is a separate download.
+      - name: Install Metal toolchain
+        run: |
+          xcrun -f metal 2>/dev/null || xcodebuild -downloadComponent MetalToolchain
+          xcrun metal --version
+
+      - name: Install SwiftLint and clang-format
+        run: |
+          brew install swiftlint clang-format
+          swiftlint version
+          clang-format --version
+
+      - name: GPU
+        run: system_profiler SPDisplaysDataType
+
+      # Format check, SwiftLint, Metal -Weverything -Werror, warnings-as-errors build.
+      - name: Lint
+        run: scripts/lint.sh
+
+      # No puzzle inputs in CI (they are not redistributable): the real-input tests skip, the
+      # example tests run. GPU suites skip if the runner has no Metal device.
+      - name: Test
+        run: swift test

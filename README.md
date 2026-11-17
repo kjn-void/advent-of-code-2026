@@ -1,5 +1,7 @@
 # Advent of Code 2026 — Swift + Metal Compute
 
+[![CI](https://github.com/kjn-void/advent-of-code-2026/actions/workflows/ci.yml/badge.svg)](https://github.com/kjn-void/advent-of-code-2026/actions/workflows/ci.yml)
+
 Each puzzle is parsed in Swift into flat, GPU-friendly buffers and solved with Metal compute
 kernels. The same code runs three ways:
 
@@ -231,6 +233,12 @@ Guidelines:
   in a parameterized `@Test`, so each example shows up as its own test case
 * optional real-input checks, e.g. Example 1 cross-checks the GPU answers against a plain CPU
   implementation. They are skipped automatically when the input isn't downloaded (e.g. on CI).
+* suites that dispatch Metal work carry the `.requiresGPU` trait, so they are skipped with a reason
+  on a machine without a Metal device instead of crashing.
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs `scripts/lint.sh` and
+`swift test` on every push to `main` and every pull request, on `macos-26` with the newest Xcode on
+the image.
 
 ## Benchmarks
 

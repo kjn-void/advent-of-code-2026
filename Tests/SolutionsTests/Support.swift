@@ -20,6 +20,12 @@ struct Example: Sendable, CustomTestStringConvertible {
     var testDescription: String { name }
 }
 
+extension Trait where Self == ConditionTrait {
+    /// Put on every suite that dispatches Metal work: on a machine without a Metal device (some CI
+    /// VMs) the suite is skipped with a reason instead of crashing in `GPU.shared`.
+    static var requiresGPU: Self { .enabled(if: GPU.isAvailable, "no Metal device on this machine") }
+}
+
 /// Solves `example` with `type` and checks every expected answer it carries.
 func check<S: Solution>(_ type: S.Type, _ example: Example, gpu: GPU = .shared) throws {
     let solution = try type.init(input: Input(example.input), gpu: gpu)

@@ -2,7 +2,7 @@ import AoCKit
 @testable import Solutions
 import Testing
 
-@Suite("Day __N__ — __TITLE__")
+@Suite("Day __N__ — __TITLE__", .requiresGPU)
 struct Day__NN__Tests {
     /// Every example from the puzzle text, with the answers it states. Use `part1:` / `part2:`
     /// only for the parts an example applies to (part 2 often has its own example).

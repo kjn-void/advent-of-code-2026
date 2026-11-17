@@ -19,6 +19,9 @@ public final class GPU: @unchecked Sendable {
     private let caches = Mutex(Caches())
     private let gpuNanoseconds = Atomic<UInt64>(0)
 
+    /// Whether this machine has a Metal device at all (CI VMs may not). Check before `shared`.
+    public static var isAvailable: Bool { MTLCreateSystemDefaultDevice() != nil }
+
     /// Process-wide instance. Creating devices/queues is expensive; share this one.
     public static let shared: GPU = {
         do {

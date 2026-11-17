@@ -3,7 +3,7 @@ import Testing
 
 @testable import Solutions
 
-@Suite("Example 1 — Trebuchet?! (AoC 2023 day 1)")
+@Suite("Example 1 — Trebuchet?! (AoC 2023 day 1)", .requiresGPU)
 struct Example01Tests {
     static let examples = [
         Example(
