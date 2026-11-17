@@ -45,19 +45,14 @@ jobs:
           swiftlint version
           clang-format --version
 
+      # Ask Metal, not system_profiler: the runner's paravirtual GPU is invisible to the latter.
       - name: GPU
         run: |
-          system_profiler SPDisplaysDataType | tee gpu.txt
-          {
-            echo "### GPU"
-            echo '```'
-            grep -E 'Chipset Model|Metal Support|Total Number of Cores' gpu.txt | sed 's/^ *//' \
-              || echo "No GPU reported by system_profiler"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          gpu=$(swift scripts/ci/metal-device.swift)
+          echo "$gpu"
+          printf '### GPU\n\n%s\n\n' "$gpu" >> "$GITHUB_STEP_SUMMARY"
           # Annotations, unlike logs and summaries, are visible without signing in.
-          gpu=$(grep -E 'Chipset Model|Metal Support' gpu.txt | sed -E 's/^ *[^:]+: //' | paste -sd ';' - | sed 's/;/, /g')
-          echo "::notice title=GPU::${gpu:-none reported}"
+          echo "::notice title=GPU::$gpu"
 
       # Format check, SwiftLint, Metal -Weverything -Werror, warnings-as-errors build.
       - name: Lint
