@@ -15,16 +15,42 @@ kernels. The same code runs three ways:
 every piece: input download, GPU solve, unit tests from the puzzle examples, benchmarks and a
 visualization.
 
-Requirements: macOS 15+ on Apple silicon, Xcode 16+ (Swift 6.2 tools, Metal toolchain).
+Requirements: an Apple silicon Mac, full Xcode 26 or later (Swift 6.2 or later), and the
+separately installed Metal Toolchain. The binaries target macOS 15 or later; check
+[Apple's Xcode system requirements](https://developer.apple.com/xcode/system-requirements/)
+for the macOS version needed to run your version of Xcode.
 
 ## Quick start
 
+Install [Xcode](https://developer.apple.com/xcode/), then select it and install the
+[Metal Toolchain](https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components):
+
 ```bash
-export AOC_SESSION=…                # your adventofcode.com session cookie (see below)
-swift run aoc2026 e1                # 🌟 Example 1 — Trebuchet?! 🌟  Part 1: …  Part 2: …
-swift run aoc2026-viz e1            # open the visualizer on Example 1
-swift test                          # unit tests
+sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+sudo xcodebuild -runFirstLaunch
+xcodebuild -downloadComponent metalToolchain
+swift --version
+xcrun -sdk macosx metal --version
+```
+
+Adjust the path if Xcode is installed elsewhere. If `xcode-select -p` shows
+`/Library/Developer/CommandLineTools`, the standalone tools are selected. They can provide
+Swift, but this project's shader build also needs `xcrun -sdk macosx metal --version` to succeed.
+
+From the repo root, build both executables and run the tests:
+
+```bash
+swift build
+swift test
 make help                           # all shortcuts
+```
+
+These commands need no Advent of Code account or puzzle input. To run Example 1 with real input,
+set your session cookie as described below if the input isn't already cached:
+
+```bash
+swift run aoc2026 e1                # print the answers for Example 1
+swift run aoc2026-viz e1            # open the visualizer on Example 1
 ```
 
 ## Puzzle input
@@ -287,9 +313,9 @@ make lint-fast     # same without the extra build
 The normal build also compiles shaders with `-Wall -Wextra`, so Metal warnings show up in
 `swift build` and Xcode. clang-tidy isn't used: it can't parse MSL's address spaces and attributes.
 
-Tools: `swift-format` and `metal` come with Xcode, `clang-format` and SwiftLint from Homebrew
-(`brew install clang-format swiftlint`). `lint.sh` fails if SwiftLint is missing, rather than
-quietly skipping it.
+Tools: `swift-format` comes with Xcode, and `metal` comes from the Metal Toolchain installed
+above. Get `clang-format` and SwiftLint from Homebrew (`brew install clang-format swiftlint`).
+`lint.sh` fails if SwiftLint is missing, rather than quietly skipping it.
 
 ## Notes
 
