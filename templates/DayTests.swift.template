@@ -1,6 +1,7 @@
 import AoCKit
-@testable import Solutions
 import Testing
+
+@testable import Solutions
 
 @Suite("Day __N__ — __TITLE__", .requiresGPU)
 struct Day__NN__Tests {
@@ -11,7 +12,7 @@ struct Day__NN__Tests {
             "example", part1: nil, part2: nil,
             """
             paste the example input here
-            """),
+            """)
     ]
 
     @Test(arguments: examples)

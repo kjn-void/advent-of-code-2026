@@ -49,14 +49,27 @@ for pair in "${targets[@]}"; do
     echo "created ${pair#*:}"
 done
 
+# Placeholders are longer than what replaces them ("__NN__" → "03"), which shifts alignment, so
+# format the generated files instead of hand-formatting the templates for one particular length.
+xcrun swift-format format --in-place "Sources/Solutions/Day$nn.swift" "Tests/SolutionsTests/Day${nn}Tests.swift"
+if command -v clang-format >/dev/null; then
+    clang-format -i "Sources/Solutions/Shaders/Day$nn.metal" "Sources/AoCShared/include/Day${nn}Types.h"
+else
+    echo "clang-format not found (brew install clang-format); run scripts/format.sh before linting." >&2
+fi
+
 # The AoCShared module map uses an umbrella directory; SwiftPM's explicit-module cache only
 # notices the new DayNNTypes.h when the module map itself changes.
 touch Sources/AoCShared/include/module.modulemap
 
 registry=Sources/Solutions/Registry.swift
 if ! grep -q "Day$nn.self" "$registry"; then
+    # swift-format strips the trailing comma from a one-element array (multiElement… only covers
+    # two or more), so the entry above the marker may lack one: add it before inserting.
+    perl -0pi -e 's/([^,\[\s])(\s*\n[ \t]*\/\/ new-day: insert above)/$1,$2/' "$registry"
     sed -i '' "s|^\([[:space:]]*\)// new-day: insert above|\1Day$nn.self,\\
 \1// new-day: insert above|" "$registry"
+    xcrun swift-format format --in-place "$registry"
     echo "registered Day$nn in $registry"
 fi
 
