@@ -1,0 +1,20 @@
+// Day __N__ — structs shared between Day__NN__.swift and Day__NN__.metal.
+#ifndef DAY__NN___TYPES_H
+#define DAY__NN___TYPES_H
+
+#include <simd/simd.h>
+
+typedef struct Day__NN__Params {
+    uint32_t count;
+} Day__NN__Params;
+
+typedef struct Day__NN__VizParams {
+    uint32_t count;
+    uint32_t columns;
+    uint32_t revealed;
+    uint32_t maxValue;
+    uint32_t part;
+    float progress;
+} Day__NN__VizParams;
+
+#endif  // DAY__NN___TYPES_H

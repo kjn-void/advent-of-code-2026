@@ -1,0 +1,21 @@
+import AoCKit
+@testable import Solutions
+import Testing
+
+@Suite("Day __N__ — __TITLE__")
+struct Day__NN__Tests {
+    /// Every example from the puzzle text, with the answers it states. Use `part1:` / `part2:`
+    /// only for the parts an example applies to (part 2 often has its own example).
+    static let examples = [
+        Example(
+            "example", part1: nil, part2: nil,
+            """
+            paste the example input here
+            """),
+    ]
+
+    @Test(arguments: examples)
+    func example(_ example: Example) throws {
+        try check(Day__NN__.self, example)
+    }
+}

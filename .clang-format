@@ -1,0 +1,43 @@
+# Formatting for Metal Shading Language (.metal) and the shared C headers (.h).
+# MSL 3.x is C++14 with extensions, so clang-format's C++ front end handles it, including
+# address-space qualifiers (device/constant/threadgroup) and [[attribute]] syntax.
+---
+Language: Cpp
+BasedOnStyle: Google
+Standard: c++14
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 120
+UseTab: Never
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: true
+BinPackParameters: true
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: Consecutive
+AlignTrailingComments: true
+SpacesBeforeTrailingComments: 2
+BreakBeforeTernaryOperators: true
+Cpp11BracedListStyle: true
+FixNamespaceComments: true
+NamespaceIndentation: None
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+IncludeCategories:
+  - Regex: '^<metal_.*>$|^<simd/.*>$'
+    Priority: 1
+  - Regex: '.*'
+    Priority: 2
+...

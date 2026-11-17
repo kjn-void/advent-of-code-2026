@@ -1,0 +1,31 @@
+// Day __N__ — __TITLE__
+#include "AoCKernels.h"
+#include "Day__NN__Types.h"
+
+using namespace metal;
+
+[[kernel]] void day__NN___sum(const device uint* values [[buffer(0)]], device atomic_uint* total [[buffer(1)]],
+                              constant Day__NN__Params& params [[buffer(2)]], uint i [[thread_position_in_grid]]) {
+    if (i >= params.count) {
+        return;
+    }
+    aoc::atomicAdd64(total, ulong(values[i]));
+}
+
+// Visualisation: one bar per value on a square grid; bars beyond `revealed` stay flat and dim.
+[[kernel]] void day__NN___instances(const device uint* values [[buffer(0)]], device AoCInstance* out [[buffer(1)]],
+                                    constant Day__NN__VizParams& params [[buffer(2)]],
+                                    uint i [[thread_position_in_grid]]) {
+    if (i >= params.count) {
+        return;
+    }
+    const float t = float(values[i]) / float(params.maxValue);
+    const bool shown = i < params.revealed;
+    const float height = shown ? 0.2f + 9.8f * t : 0.1f;
+
+    AoCInstance inst;
+    inst.position = float3(float(i % params.columns) * 1.2f, height * 0.5f, float(i / params.columns) * 1.2f);
+    inst.scale = float3(1.0f, height, 1.0f);
+    inst.color = float4(shown ? aoc::heatColor(t) : float3(0.2f), 1.0f);
+    out[i] = inst;
+}

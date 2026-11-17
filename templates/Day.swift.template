@@ -1,0 +1,85 @@
+import AoCKit
+import AoCRender
+import AoCShared
+import Metal
+
+/// Day __N__ — __TITLE__ (https://adventofcode.com/2026/day/__N__)
+///
+/// Template skeleton: parses every integer of the input into a flat GPU buffer and sums them on
+/// the GPU. Replace parsing, kernels and visualization with the real thing.
+public final class Day__NN__: Solution {
+    public static let id = PuzzleID.day(__N__)
+    public static let title = "__TITLE__"
+
+    let gpu: GPU
+    let values: GPUBuffer<UInt32>
+    private let sum: any MTLComputePipelineState
+
+    public init(input: Input, gpu: GPU) throws {
+        self.gpu = gpu
+        // Parse on the CPU into flat, GPU-friendly buffers (see Input / Grid / Parse helpers).
+        values = gpu.buffer(input.integers.map { UInt32(clamping: $0) }, label: "values")
+        sum = try gpu.kernel("day__NN___sum")
+    }
+
+    public func part1() throws -> String {
+        let total = gpu.buffer(count: 2, of: UInt32.self, label: "total")  // {lo, hi} for 64-bit sums
+        let params = Day__NN__Params(count: UInt32(values.count))
+        try gpu.run("Day__NN__ part 1") { encoder in
+            encoder.dispatch(sum, count: values.count, .buffer(values), .buffer(total), .value(params))
+        }
+        return "\(total.uint64())"
+    }
+
+    public func part2() throws -> String {
+        throw SolutionError.notImplemented
+    }
+}
+
+// MARK: - Visualization
+
+extension Day__NN__: Visualizable {
+    @MainActor public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
+        try Day__NN__Scene(solution: Day__NN__(input: input, gpu: gpu))
+    }
+}
+
+/// Template scene: one bar per parsed value, revealed one per step.
+@MainActor
+final class Day__NN__Scene: VisualizationScene {
+    let instances: GPUBuffer<AoCInstance>
+    let bounds: SceneBounds
+    var instanceCount: Int { instances.count }
+    var stepCount: Int { max(solution.values.count, 1) }
+    var preferredStepsPerSecond: Double { 30 }
+
+    private let solution: Day__NN__
+    private let pipeline: any MTLComputePipelineState
+    private let columns: Int
+    private let maxValue: UInt32
+
+    init(solution: Day__NN__) throws {
+        self.solution = solution
+        pipeline = try solution.gpu.kernel("day__NN___instances")
+        instances = solution.gpu.buffer(count: max(solution.values.count, 1), of: AoCInstance.self)
+        columns = max(1, Int(Double(solution.values.count).squareRoot().rounded(.up)))
+        maxValue = max(solution.values.array.max() ?? 1, 1)
+        let side = Float(columns) * 1.2
+        bounds = SceneBounds(min: SIMD3(0, 0, 0), max: SIMD3(side, 10, side))
+    }
+
+    func update(_ frame: FrameContext) throws {
+        let params = Day__NN__VizParams(
+            count: UInt32(solution.values.count), columns: UInt32(columns), revealed: UInt32(frame.step + 1),
+            maxValue: maxValue, part: UInt32(frame.part), progress: frame.progress)
+        try frame.gpu.encode(into: frame.commandBuffer) { encoder in
+            encoder.dispatch(
+                pipeline, count: solution.values.count, .buffer(solution.values), .buffer(instances), .value(params))
+        }
+    }
+
+    func caption(step: Int, part _: Int) -> String {
+        guard step < solution.values.count else { return "" }
+        return "value \(step + 1)/\(solution.values.count): \(solution.values[step])"
+    }
+}

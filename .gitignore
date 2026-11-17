@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+Package.resolved
+
+# Advent of Code: inputs are personal and must not be redistributed.
+input/
+
+# Never commit the session cookie.
+.aoc-session
+
+# Visualizer snapshots
+snapshot*.png
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~

@@ -1,0 +1,8 @@
+// Every header in this directory is visible to Swift (`import AoCShared`) and, via the
+// MetalCompiler plugin's include path, to Metal. Metal-only headers guard their contents
+// with `#ifdef __METAL_VERSION__`. Per-puzzle shared structs: add `DayNNTypes.h` here.
+module AoCShared {
+    umbrella "."
+    export *
+    module * { export * }
+}
