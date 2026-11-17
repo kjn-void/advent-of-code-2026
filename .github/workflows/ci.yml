@@ -46,7 +46,15 @@ jobs:
           clang-format --version
 
       - name: GPU
-        run: system_profiler SPDisplaysDataType
+        run: |
+          system_profiler SPDisplaysDataType | tee gpu.txt
+          {
+            echo "### GPU"
+            echo '```'
+            grep -E 'Chipset Model|Metal Support|Total Number of Cores' gpu.txt | sed 's/^ *//' \
+              || echo "No GPU reported by system_profiler"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Format check, SwiftLint, Metal -Weverything -Werror, warnings-as-errors build.
       - name: Lint
@@ -55,4 +63,23 @@ jobs:
       # No puzzle inputs in CI (they are not redistributable): the real-input tests skip, the
       # example tests run. GPU suites skip if the runner has no Metal device.
       - name: Test
-        run: swift test
+        run: |
+          set -o pipefail
+          swift test 2>&1 | tee test.log
+
+      # Swift Testing prints "✔ Test run with …" at the end and "➜ … skipped: "reason"" for every
+      # skipped test or suite (e.g. GPU suites on a runner without Metal, real-input tests).
+      - name: Test summary
+        if: always()
+        run: |
+          {
+            echo "### Tests"
+            grep -E '^(✔|✘) Test run' test.log || echo "No test run result found (build failure?)"
+            echo
+            if grep -q 'skipped:' test.log; then
+              echo "Skipped:"
+              grep 'skipped:' test.log | sed -E 's/^➜ /- /'
+            else
+              echo "Nothing skipped."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
