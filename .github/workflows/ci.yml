@@ -55,6 +55,9 @@ jobs:
               || echo "No GPU reported by system_profiler"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # Annotations, unlike logs and summaries, are visible without signing in.
+          gpu=$(grep -E 'Chipset Model|Metal Support' gpu.txt | sed -E 's/^ *[^:]+: //' | paste -sd ';' - | sed 's/;/, /g')
+          echo "::notice title=GPU::${gpu:-none reported}"
 
       # Format check, SwiftLint, Metal -Weverything -Werror, warnings-as-errors build.
       - name: Lint
@@ -83,3 +86,6 @@ jobs:
               echo "Nothing skipped."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+          result=$(grep -E '^(✔|✘) Test run' test.log | sed -E 's/^(✔|✘) //' || true)
+          echo "::notice title=Tests::${result:-no test run result found}"
+          grep 'skipped:' test.log | sed -E 's/^➜ //; s/^/::notice title=Skipped::/' || true
