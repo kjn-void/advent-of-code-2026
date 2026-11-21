@@ -106,6 +106,8 @@ private struct PuzzleDetail: View {
                 Button("Re-download Input", systemImage: "arrow.down.circle") {
                     Task { await model.load(refresh: true) }
                 }
+                .help("Download this puzzle's input from adventofcode.com again (needs AOC_SESSION)")
+                .disabled(model.source(for: type) == .example)
                 Link(destination: URL(string: type.id.url)!) {
                     Label("Puzzle", systemImage: "safari")
                 }

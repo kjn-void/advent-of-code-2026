@@ -91,6 +91,11 @@ final class AppModel {
             }
         } catch {
             states[id, default: PuzzleState()].isSolving = false
+            // A failed re-download leaves the cached input as it was: keep showing it.
+            if refresh, hasScene {
+                sceneError = "Re-download failed: \(error). Still showing the cached input."
+                return
+            }
             states[id, default: PuzzleState()].error = "Input: \(error)"
             clearScene()
             return
