@@ -142,6 +142,10 @@ swift run aoc2026-viz --snapshot e1 --at 1.55 --part 2 --size 1600x900 --out sna
 `--at` is the timeline position in steps (`1.55` = second step, 55 % through its animation).
 Add `--example` to render the puzzle's worked example instead of the real input.
 
+The app icon (a voxel Christmas tree with a gold star) is drawn in code in
+`Sources/AoCViz/AppIcon.swift` and set as the Dock icon at launch, since a SwiftPM executable has
+no bundle or asset catalog. Export it with `aoc2026-viz --icon icon.png [--size 512]`.
+
 For GPU frame capture and shader debugging, open `Package.swift` in Xcode and run the `aoc2026-viz`
 scheme. Shaders are compiled with `-gline-tables-only -frecord-sources`, so sources show up in the
 Metal debugger.

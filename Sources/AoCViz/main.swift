@@ -18,6 +18,7 @@ import UniformTypeIdentifiers
 ///         --out <file.png>  default snapshot.png
 ///         --input <file>    use this input instead of input/<year>/dayNN.txt
 ///         --example         use the puzzle's worked example as input
+///     swift run aoc2026-viz --icon icon.png [--size N]  write the app icon as an N x N PNG (default 1024)
 struct AoCVizApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel(
@@ -39,6 +40,8 @@ struct AoCVizApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_: Notification) {
         NSApp.setActivationPolicy(.regular)
+        // No bundle, no asset catalog: draw the Dock icon ourselves.
+        NSApp.applicationIconImage = AppIcon.image()
     }
 
     func applicationDidFinishLaunching(_: Notification) {
@@ -114,9 +117,34 @@ func writePNG(_ cgImage: CGImage, to path: String) throws {
     guard CGImageDestinationFinalize(destination) else { throw SolutionError.malformedInput("cannot write \(path)") }
 }
 
+@MainActor
+func exportIcon(_ arguments: [String]) throws {
+    var out = "icon.png"
+    var size = AppIcon.canvas
+    var iterator = arguments.makeIterator()
+    while let argument = iterator.next() {
+        switch argument {
+        case "--size": size = (iterator.next()).flatMap(Double.init).map { CGFloat($0) } ?? size
+        default: out = argument
+        }
+    }
+    guard let image = AppIcon.render(size: size) else { throw SolutionError.malformedInput("icon rendering failed") }
+    try writePNG(image, to: out)
+    print("\(out): \(image.width)x\(image.height)")
+}
+
 // Keep this top-level code synchronous: a top-level `await` turns it into an async main, and
 // SwiftUI's App.main() then never connects to the window server.
 let arguments = Array(CommandLine.arguments.dropFirst())
+if let index = arguments.firstIndex(of: "--icon") {
+    do {
+        try MainActor.assumeIsolated { try exportIcon(Array(arguments[(index + 1)...])) }
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("error: \(error)\n".utf8))
+        exit(1)
+    }
+}
 if let index = arguments.firstIndex(of: "--snapshot") {
     var rest = arguments
     rest.remove(at: index)
