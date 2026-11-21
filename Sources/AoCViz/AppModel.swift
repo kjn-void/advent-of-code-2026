@@ -18,7 +18,16 @@ final class AppModel {
     let renderer: Renderer?
     let rendererError: String?
 
+    /// Which input to visualize: the puzzle's worked example or the real (downloaded) input.
+    enum InputSource: Hashable {
+        case example, puzzle
+    }
+
     private(set) var states: [PuzzleID: PuzzleState] = [:]
+    /// Per puzzle, so switching puzzles keeps each one's choice.
+    private var sources: [PuzzleID: InputSource] = [:]
+    /// Source used when a puzzle has no choice yet (`--example` on the command line).
+    private let defaultSource: InputSource
     private(set) var sceneError: String?
     private(set) var hasScene = false
     var selection: PuzzleID? {
@@ -28,7 +37,8 @@ final class AppModel {
     var playback: Playback { renderer?.playback ?? fallbackPlayback }
     private let fallbackPlayback = Playback()
 
-    init(initialSelection: String?) {
+    init(initialSelection: String?, example: Bool = false) {
+        defaultSource = example ? .example : .puzzle
         do {
             renderer = try Renderer(gpu: gpu)
             rendererError = nil
@@ -47,6 +57,18 @@ final class AppModel {
 
     func state(for id: PuzzleID) -> PuzzleState { states[id] ?? PuzzleState() }
 
+    /// The input source in effect for `type`: the example only if the solution has one.
+    func source(for type: any Solution.Type) -> InputSource {
+        type.exampleInput == nil ? .puzzle : sources[type.id] ?? defaultSource
+    }
+
+    func setSource(_ source: InputSource, for type: any Solution.Type) {
+        guard source != self.source(for: type) else { return }
+        sources[type.id] = source
+        states[type.id] = nil
+        Task { await load() }
+    }
+
     func caption() -> String {
         guard let scene = renderer?.scene else { return "" }
         return scene.caption(step: playback.step, part: playback.part)
@@ -62,7 +84,11 @@ final class AppModel {
 
         let input: Input
         do {
-            input = try await store.load(id, refresh: refresh)
+            if source(for: type) == .example, let example = type.exampleInput {
+                input = Input(example)
+            } else {
+                input = try await store.load(id, refresh: refresh)
+            }
         } catch {
             states[id, default: PuzzleState()].isSolving = false
             states[id, default: PuzzleState()].error = "Input: \(error)"
@@ -95,9 +121,7 @@ final class AppModel {
             let scene = try visual.makeScene(input: input, gpu: gpu)
             renderer.scene = scene
             renderer.onError = { [weak self] error in self?.sceneError = "\(error)" }
-            let part = renderer.playback.part
-            renderer.playback.reset(stepCount: scene.stepCount, stepsPerSecond: scene.preferredStepsPerSecond)
-            renderer.playback.part = part
+            renderer.playback.reset(for: scene)
             hasScene = true
         } catch {
             sceneError = "Scene: \(error)"

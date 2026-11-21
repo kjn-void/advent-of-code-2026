@@ -12,10 +12,17 @@ public protocol Solution: AnyObject, SendableMetatype {
     static var id: PuzzleID { get }
     /// Puzzle title shown in the CLI header and the visualizer sidebar.
     static var title: String { get }
+    /// The worked example from the puzzle text, if the solution carries one. The visualizer can
+    /// show it instead of the real input (`--example` on the command line).
+    static var exampleInput: String? { get }
 
     init(input: Input, gpu: GPU) throws
     func part1() throws -> String
     func part2() throws -> String
+}
+
+public extension Solution {
+    static var exampleInput: String? { nil }
 }
 
 /// Identifies a solution slot.

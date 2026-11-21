@@ -13,7 +13,8 @@ kernels. The same code runs three ways:
 
 **Example 1** is AoC 2023 day 1 ("Trebuchet?!"), kept as the end-to-end reference that exercises
 every piece: input download, GPU solve, unit tests from the puzzle examples, benchmarks and a
-visualization.
+visualization. **Example 2** is AoC 2024 day 6 ("Guard Gallivant"): a grid walk, a massively
+parallel GPU search, and a 2.5D game-style visualization with a camera that follows the guard.
 
 Requirements: an Apple silicon Mac, full Xcode 26 or later (Swift 6.2 or later), and the
 separately installed Metal Toolchain. The binaries target macOS 15 or later; check
@@ -86,6 +87,7 @@ aoc2026 [options] <puzzle>...
   -q, --quiet               bare answers, one per line (for scripts)
   -t, --time                timings to stderr
   -i, --input <file>        explicit input file (e.g. an example you saved)
+  -e, --example             the puzzle's worked example, built into the solution
   -r, --refresh             re-download input
   -b, --bench               benchmark instead of solving
       --budget <ms>         time budget per benchmark phase (default 500)
@@ -99,13 +101,17 @@ smoke test.
 
 ## Visualizer
 
-`swift run aoc2026-viz [puzzle]` opens a window with a sidebar of puzzles, the answers and timings, and
-a Metal viewport:
+`swift run aoc2026-viz [puzzle] [--example]` opens a window with a sidebar of puzzles, the answers and
+timings, and a Metal viewport:
 
 * **drag** orbits, **shift-drag** or **right-drag** pans, **scroll/pinch** zooms, **double-click**
   resets the camera
 * the timeline at the bottom plays/scrubs through the solution step by step (space = play/pause; Tab focuses a slider; ← / → nudge the focused or last-touched slider, timeline by default: one step or ×1.26 speed, ⇧ for ten steps or ×10),
   with a Part 1 / Part 2 toggle and a speed control (0.01 to 1000 steps/s)
+* the toolbar's **Example / Puzzle input** switch shows the puzzle's worked example or your real
+  input (for solutions that carry their example as `exampleInput`)
+* scenes can make the camera follow something (Example 2 follows the guard); panning by hand
+  stops that until you reset the view
 
 Each scene is GPU-driven: per frame, the scene encodes a compute kernel that writes `AoCInstance`
 boxes (position, scale, colour) straight from the solution's buffers, and the renderer draws them
@@ -117,6 +123,15 @@ outside them turn red and explode, then those in the middle do the same. Spelled
 into their digit, the two digits slide together into the line's value, and the value flies into
 the running total.
 
+Example 2's animation is a little arcade game. Part 1: the guard patrols the map leaving a glowing
+trail of horizontal and vertical bars, so corners and crossings show as "+" like in the puzzle's
+drawings. Fresh trail is hot yellow and cools to teal. The floating score counts distinct tiles.
+Stepping onto a tile already visited scores nothing: the tile flashes, a shockwave ring ripples
+out and the score shakes and greys out. Every 100 tiles the score pops. Part 2 goes through every
+candidate obstruction in the order the guard reaches it: a crate drops in front of her, and a cyan
+ghost guard runs the altered route. A route that loops turns magenta, the crate stays as a magenta
+marker and the score (loops found) pops; otherwise the ghost walks off the map and the crate sinks.
+
 **Headless snapshots** render one frame to PNG without opening a window, which is handy for
 checking a visualization or for docs:
 
@@ -125,6 +140,7 @@ swift run aoc2026-viz --snapshot e1 --at 1.55 --part 2 --size 1600x900 --out sna
 ```
 
 `--at` is the timeline position in steps (`1.55` = second step, 55 % through its animation).
+Add `--example` to render the puzzle's worked example instead of the real input.
 
 For GPU frame capture and shader debugging, open `Package.swift` in Xcode and run the `aoc2026-viz`
 scheme. Shaders are compiled with `-gline-tables-only -frecord-sources`, so sources show up in the

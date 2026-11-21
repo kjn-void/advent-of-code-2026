@@ -15,6 +15,7 @@ let usage = """
       -q, --quiet       print bare answers, one per line
       -t, --time        print timings to stderr
       -i, --input <f>   read input from <f> instead of input/<year>/dayNN.txt
+      -e, --example     use the puzzle's worked example as input (where the solution has one)
       -r, --refresh     re-download input even if cached
       -b, --bench       benchmark instead of solving (use `-c release`)
           --budget <ms> time budget per benchmark phase (default 500)
@@ -34,6 +35,7 @@ struct Options {
     var quiet = false
     var time = false
     var inputFile: String?
+    var example = false
     var refresh = false
     var bench = false
     var budgetMS = 500
@@ -74,6 +76,7 @@ func parse(_ arguments: [String]) throws -> Options {
         case "-q", "--quiet": options.quiet = true
         case "-t", "--time": options.time = true
         case "-i", "--input": options.inputFile = try value(for: argument)
+        case "-e", "--example": options.example = true
         case "-r", "--refresh": options.refresh = true
         case "-b", "--bench": options.bench = true
         case "--budget":
@@ -116,7 +119,7 @@ func printStderr(_ message: String) {
 }
 
 /// Launches the visualizer that sits next to this binary (both live in .build/<config>/).
-func launchVisualizer(puzzle: String?) throws -> Never {
+func launchVisualizer(puzzle: String?, example: Bool) throws -> Never {
     let directory = URL(filePath: CommandLine.arguments[0]).deletingLastPathComponent()
     let viz = directory.appending(path: "aoc2026-viz")
     guard FileManager.default.isExecutableFile(atPath: viz.path(percentEncoded: false)) else {
@@ -124,7 +127,7 @@ func launchVisualizer(puzzle: String?) throws -> Never {
     }
     let process = Process()
     process.executableURL = viz
-    process.arguments = puzzle.map { [$0] } ?? []
+    process.arguments = (puzzle.map { [$0] } ?? []) + (example ? ["--example"] : [])
     try process.run()
     process.waitUntilExit()
     exit(process.terminationStatus)
@@ -163,7 +166,7 @@ func run() async throws -> Int32 {
         }
         return 0
     }
-    if options.ui { try launchVisualizer(puzzle: options.puzzles.first) }
+    if options.ui { try launchVisualizer(puzzle: options.puzzles.first, example: options.example) }
     guard !options.puzzles.isEmpty else {
         print(usage)
         return 1
@@ -182,7 +185,12 @@ func run() async throws -> Int32 {
     for solution in solutions {
         let input: Input
         do {
-            if let file = options.inputFile {
+            if options.example {
+                guard let text = solution.exampleInput else {
+                    throw CLIError.usage("\(solution.id) has no built-in example input")
+                }
+                input = Input(text)
+            } else if let file = options.inputFile {
                 input = try store.load(file: file)
             } else {
                 input = try await store.load(solution.id, refresh: options.refresh)

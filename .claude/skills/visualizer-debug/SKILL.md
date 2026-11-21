@@ -28,13 +28,14 @@ scripts/viz/frames.sh --part 2 e1 3.10 3.30 3.60 3.86 3.91 3.97
 - Frames go to `.build/viz-frames/<puzzle>-p<part>/frame-<pos>.png`, and a labelled contact sheet
   to `sheet.png` in the same folder. **Look at the sheet with the Read tool.** Use the caption to
   check values; use the image for layout, colour and timing.
-- Options: `-c release`, `--size WxH` (default 800x450; use 1600x900 for detail), `--input <file>`
+- Options: `--example`, `-c release`, `--size WxH` (default 800x450; use 1600x900 for detail), `--input <file>`
   (e.g. a saved puzzle example), `--out <dir>`, `--cols N`.
 - A single frame without the script:
   `$(swift build --show-bin-path)/aoc2026-viz --snapshot e1 --at 3.5 --part 1 --size 1600x900 --out f.png`
 
 The real input must be cached in `input/<year>/dayNN.txt`. Otherwise the app downloads it using
-`AOC_SESSION`. If it is missing, ask the user, or use `--input` with an example file.
+`AOC_SESSION`. If it is missing, ask the user, or use `--example` (the puzzle's worked example,
+built into the solution) or `--input` with an example file.
 **Never write the AoC session cookie to disk.**
 
 ## 2. The live window (only for interaction, UI chrome or real-time behaviour)

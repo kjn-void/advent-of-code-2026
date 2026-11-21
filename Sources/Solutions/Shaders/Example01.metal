@@ -97,46 +97,6 @@ int digitAt(const device uchar* bytes, uint i, uint count, bool spelled, thread 
 
 namespace {
 
-// 5x7 font, rows top to bottom, bit 4 = leftmost column. Index: '0'-'9' -> 0-9, 'a'-'z' -> 10-35.
-constant uchar kFont[36][7] = {
-    {0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110},  // 0
-    {0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110},  // 1
-    {0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111},  // 2
-    {0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110},  // 3
-    {0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010},  // 4
-    {0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110},  // 5
-    {0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110},  // 6
-    {0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000},  // 7
-    {0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110},  // 8
-    {0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100},  // 9
-    {0b00000, 0b00000, 0b01110, 0b00001, 0b01111, 0b10001, 0b01111},  // a
-    {0b10000, 0b10000, 0b10110, 0b11001, 0b10001, 0b10001, 0b11110},  // b
-    {0b00000, 0b00000, 0b01110, 0b10000, 0b10000, 0b10001, 0b01110},  // c
-    {0b00001, 0b00001, 0b01101, 0b10011, 0b10001, 0b10001, 0b01111},  // d
-    {0b00000, 0b00000, 0b01110, 0b10001, 0b11111, 0b10000, 0b01110},  // e
-    {0b00110, 0b01001, 0b01000, 0b11100, 0b01000, 0b01000, 0b01000},  // f
-    {0b00000, 0b01111, 0b10001, 0b10001, 0b01111, 0b00001, 0b01110},  // g
-    {0b10000, 0b10000, 0b10110, 0b11001, 0b10001, 0b10001, 0b10001},  // h
-    {0b00100, 0b00000, 0b01100, 0b00100, 0b00100, 0b00100, 0b01110},  // i
-    {0b00010, 0b00000, 0b00110, 0b00010, 0b00010, 0b10010, 0b01100},  // j
-    {0b10000, 0b10000, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010},  // k
-    {0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110},  // l
-    {0b00000, 0b00000, 0b11010, 0b10101, 0b10101, 0b10001, 0b10001},  // m
-    {0b00000, 0b00000, 0b10110, 0b11001, 0b10001, 0b10001, 0b10001},  // n
-    {0b00000, 0b00000, 0b01110, 0b10001, 0b10001, 0b10001, 0b01110},  // o
-    {0b00000, 0b00000, 0b11110, 0b10001, 0b11110, 0b10000, 0b10000},  // p
-    {0b00000, 0b00000, 0b01101, 0b10011, 0b01111, 0b00001, 0b00001},  // q
-    {0b00000, 0b00000, 0b10110, 0b11001, 0b10000, 0b10000, 0b10000},  // r
-    {0b00000, 0b00000, 0b01110, 0b10000, 0b01110, 0b00001, 0b11110},  // s
-    {0b01000, 0b01000, 0b11100, 0b01000, 0b01000, 0b01001, 0b00110},  // t
-    {0b00000, 0b00000, 0b10001, 0b10001, 0b10001, 0b10011, 0b01101},  // u
-    {0b00000, 0b00000, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100},  // v
-    {0b00000, 0b00000, 0b10001, 0b10001, 0b10101, 0b10101, 0b01010},  // w
-    {0b00000, 0b00000, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001},  // x
-    {0b00000, 0b00000, 0b10001, 0b10001, 0b01111, 0b00001, 0b01110},  // y
-    {0b00000, 0b00000, 0b11111, 0b00010, 0b00100, 0b01000, 0b11111},  // z
-};
-
 constant float kAdvance = 6.0f;                              // glyph width + 1 voxel gap
 constant float3 kQueueOffset = float3(0.0f, -11.0f, -5.0f);  // per queued line: below and behind
 constant float kTotalY = 22.0f;
@@ -153,46 +113,6 @@ constant float3 kGreen = float3(0.25f, 0.92f, 0.45f);
 constant float3 kOrange = float3(1.00f, 0.56f, 0.18f);
 constant float3 kRed = float3(0.95f, 0.12f, 0.10f);
 constant float3 kGold = float3(1.00f, 0.84f, 0.30f);
-
-bool glyphPixel(uchar c, uint col, uint row) {
-    int index = -1;
-    if (c >= '0' && c <= '9') {
-        index = int(c - '0');
-    } else if (c >= 'a' && c <= 'z') {
-        index = int(c - 'a') + 10;
-    }
-    return index >= 0 && ((kFont[index][row] >> (4 - col)) & 1u) != 0;
-}
-
-/// Linear fraction of the way through [from, to], clamped to [0, 1].
-float linear(float t, float from, float to) {
-    return saturate((t - from) / (to - from));
-}
-
-/// Smoothstep-eased fraction of the way through [from, to].
-float phase(float t, float from, float to) {
-    return smoothstep(0.0f, 1.0f, linear(t, from, to));
-}
-
-/// Overshoots ~10 % past 1 before settling: the "pop" in.
-float easeOutBack(float x) {
-    const float c1 = 1.70158f;
-    const float c3 = c1 + 1.0f;
-    const float y = x - 1.0f;
-    return 1.0f + c3 * y * y * y + c1 * y * y;
-}
-
-/// Damped spring from 1 to 0 over x in [0, 1]: crosses zero at 0.2, squashes to about -0.14
-/// at 0.4, rebounds slightly, and is exactly 0 at x = 1. The "boing" back to rest.
-float springBack(float x) {
-    x = saturate(x);
-    return x >= 1.0f ? 0.0f : exp(-5.0f * x) * cos(2.5f * M_PI_F * x);
-}
-
-float easeOutCubic(float x) {
-    const float y = 1.0f - x;
-    return 1.0f - y * y * y;
-}
 
 struct LineInfo {
     uint start;
@@ -292,12 +212,12 @@ float glyphX(float c, float length) {
             return;
         }
         const LineInfo info = k == 0 ? cur : lineInfo(line, bytes, lineStart, first, last, p);
-        if (c >= info.length || !glyphPixel(bytes[info.start + c], col, row)) {
+        if (c >= info.length || !aoc::glyphPixel(bytes[info.start + c], col, row)) {
             out[outIndex] = inst;
             return;
         }
 
-        const float advance = phase(t, 0.90f, 1.0f);
+        const float advance = aoc::phase(t, 0.90f, 1.0f);
         pos = float3(glyphX(float(c), float(info.length)), 0.0f, 0.0f) + pixelOffset;
         pos += kQueueOffset * (float(k) - advance);
         size = 1.0f;
@@ -306,7 +226,7 @@ float glyphX(float c, float length) {
             color = kWhite * mix(0.30f, 0.80f, advance * float(k == 1)) / float(k);
         } else {
             // Drop in, staggered by column.
-            pos.y += 18.0f * (1.0f - phase(t, float(c) * 0.0015f, 0.08f + float(c) * 0.0015f));
+            pos.y += 18.0f * (1.0f - aoc::phase(t, float(c) * 0.0015f, 0.08f + float(c) * 0.0015f));
 
             const bool inFirst = info.hasDigits && c >= info.firstPos && c < info.firstPos + info.firstLen;
             const bool inLast = info.hasDigits && c >= info.lastPos && c < info.lastPos + info.lastLen;
@@ -314,7 +234,7 @@ float glyphX(float c, float length) {
             const bool middle = !inFirst && !inLast && !outer;
             const bool token = inAnyToken(bytes, info.start, c, p.byteCount, spelled);
 
-            const float highlight = phase(t, 0.10f, 0.18f);
+            const float highlight = aoc::phase(t, 0.10f, 0.18f);
             if (token) {
                 color = mix(color, kBlue, highlight);
             }
@@ -322,11 +242,11 @@ float glyphX(float c, float length) {
                 const float3 target = inFirst && inLast ? kGold : (inFirst ? kGreen : kOrange);
                 color = mix(color, target, highlight);
                 // Converted into a digit glyph (result slots take over from here).
-                size *= 1.0f - phase(t, 0.56f, 0.64f);
-                pos.y += 2.0f * phase(t, 0.10f, 0.18f);
+                size *= 1.0f - aoc::phase(t, 0.56f, 0.64f);
+                pos.y += 2.0f * aoc::phase(t, 0.10f, 0.18f);
             } else if (outer || middle) {
                 const float redAt = outer ? 0.20f : 0.38f;
-                color = mix(color, kRed, phase(t, redAt, redAt + 0.06f));
+                color = mix(color, kRed, aoc::phase(t, redAt, redAt + 0.06f));
                 explode(pos, size, color, outIndex, (t - (redAt + 0.06f)) * 3.0f);
             }
         }
@@ -338,7 +258,7 @@ float glyphX(float c, float length) {
         }
         const bool tens = slot == lineSlots;
         const uint digit = uint(tens ? cur.tens : cur.ones);
-        if (!glyphPixel(uchar('0' + digit), col, row)) {
+        if (!aoc::glyphPixel(uchar('0' + digit), col, row)) {
             out[outIndex] = inst;
             return;
         }
@@ -348,16 +268,16 @@ float glyphX(float c, float length) {
         const float3 paired = float3(tens ? -kAdvance : 0.0f, 2.0f, 0.0f);
         const float3 total = float3(0.0f, kTotalY, 0.0f);
 
-        const float slide = phase(t, 0.66f, 0.76f);
-        const float fly = phase(t, 0.76f, kArrive);
+        const float slide = aoc::phase(t, 0.66f, 0.76f);
+        const float fly = aoc::phase(t, 0.76f, kArrive);
         pos = mix(mix(start, paired, slide), total, fly) + pixelOffset * (1.0f - 0.6f * fly);
         pos.z += 3.0f * sin(slide * M_PI_F);  // arc towards the viewer while sliding
-        size = phase(t, 0.56f, 0.64f) * (1.0f - fly * 0.6f) * (t < kArrive ? 1.0f : 0.0f);
+        size = aoc::phase(t, 0.56f, 0.64f) * (1.0f - fly * 0.6f) * (t < kArrive ? 1.0f : 0.0f);
         color = mix(tens ? kGreen : kOrange, kGold, fly);
     } else {
         // ---- running total: pops in, counts up fast, springs back ----
         const uint d = slot - lineSlots - 2;
-        const float count = easeOutCubic(linear(t, kArrive, kCounted));
+        const float count = aoc::easeOutCubic(aoc::linear(t, kArrive, kCounted));
         const uint gain = p.totalAfter - p.totalBefore;
         const uint value = p.totalBefore + min(gain, uint(float(gain) * count + 0.5f));
         uint digits = 1;
@@ -373,18 +293,18 @@ float glyphX(float c, float length) {
             divisor *= 10;
         }
         const uint digit = (value / divisor) % 10;
-        if (!glyphPixel(uchar('0' + digit), col, row)) {
+        if (!aoc::glyphPixel(uchar('0' + digit), col, row)) {
             out[outIndex] = inst;
             return;
         }
         // Zoom: overshooting grow, then an elastic spring back (dipping slightly below 1 for squash).
-        const float grow = easeOutBack(linear(t, kArrive, kZoomedIn));
-        const float pop = t < kCounted ? grow : springBack(linear(t, kCounted, 1.0f));
+        const float grow = aoc::easeOutBack(aoc::linear(t, kArrive, kZoomedIn));
+        const float pop = t < kCounted ? grow : aoc::springBack(aoc::linear(t, kCounted, 1.0f));
         const float scale = 1.0f + (kPopScale - 1.0f) * pop;
 
         // Each digit hops in turn while the number ticks (a wave running left to right).
         const float hopStart = kArrive + 0.008f * float(d);
-        const float hop = sin(M_PI_F * linear(t, hopStart, hopStart + 0.05f));
+        const float hop = sin(M_PI_F * aoc::linear(t, hopStart, hopStart + 0.05f));
 
         // Scale about the centre of the number so it zooms in place.
         const float3 centre = float3(-0.5f, kTotalY + 3.0f, 0.0f);

@@ -9,10 +9,14 @@ public struct OrbitCamera: Sendable {
     /// Radians above the horizon.
     public var pitch: Float = 0.6
     public var fieldOfView: Float = .pi / 4
+    /// Whether `target` tracks the scene's camera focus. Panning by hand turns it off;
+    /// framing (reset view) turns it back on.
+    public var isFollowing = true
 
     public init() {}
 
     public mutating func frame(_ bounds: SceneBounds, view: CameraView = CameraView()) {
+        isFollowing = true
         target = bounds.center
         distance = max(bounds.radius / sin(fieldOfView * 0.5), 1) * 1.05 * view.distanceScale
         yaw = view.yaw
@@ -29,9 +33,16 @@ public struct OrbitCamera: Sendable {
     }
 
     public mutating func pan(dx: Float, dy: Float) {
+        isFollowing = false
         let (right, up) = basis
         let scale = distance * 0.0015
         target += (-right * dx + up * dy) * scale
+    }
+
+    /// Moves `target` a fraction `amount` (0...1) of the way to `focus`, if following.
+    public mutating func follow(_ focus: SIMD3<Float>, amount: Float) {
+        guard isFollowing else { return }
+        target += (focus - target) * min(max(amount, 0), 1)
     }
 
     public var position: SIMD3<Float> {

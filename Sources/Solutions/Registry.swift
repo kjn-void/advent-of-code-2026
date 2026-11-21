@@ -4,7 +4,8 @@ import AoCKit
 /// `scripts/new-day.sh` inserts new days above the marker line, so keep it.
 public enum Registry {
     public static let all: [any Solution.Type] = [
-        Example01.self
+        Example01.self,
+        Example02.self,
             // new-day: insert above
     ].sorted { $0.id < $1.id }
 

@@ -110,6 +110,96 @@ inline float3 heatColor(float t) {
     return t < 0.5f ? metal::mix(a, b, t * 2.0f) : metal::mix(b, c, (t - 0.5f) * 2.0f);
 }
 
+// ---------------------------------------------------------------------------------------------
+// Voxel text
+// ---------------------------------------------------------------------------------------------
+
+// 5x7 font, rows top to bottom, bit 4 = leftmost column. Index: '0'-'9' -> 0-9, 'a'-'z' -> 10-35.
+constant uchar kFont5x7[36][7] = {
+    {0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110},  // 0
+    {0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110},  // 1
+    {0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111},  // 2
+    {0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110},  // 3
+    {0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010},  // 4
+    {0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110},  // 5
+    {0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110},  // 6
+    {0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000},  // 7
+    {0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110},  // 8
+    {0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100},  // 9
+    {0b00000, 0b00000, 0b01110, 0b00001, 0b01111, 0b10001, 0b01111},  // a
+    {0b10000, 0b10000, 0b10110, 0b11001, 0b10001, 0b10001, 0b11110},  // b
+    {0b00000, 0b00000, 0b01110, 0b10000, 0b10000, 0b10001, 0b01110},  // c
+    {0b00001, 0b00001, 0b01101, 0b10011, 0b10001, 0b10001, 0b01111},  // d
+    {0b00000, 0b00000, 0b01110, 0b10001, 0b11111, 0b10000, 0b01110},  // e
+    {0b00110, 0b01001, 0b01000, 0b11100, 0b01000, 0b01000, 0b01000},  // f
+    {0b00000, 0b01111, 0b10001, 0b10001, 0b01111, 0b00001, 0b01110},  // g
+    {0b10000, 0b10000, 0b10110, 0b11001, 0b10001, 0b10001, 0b10001},  // h
+    {0b00100, 0b00000, 0b01100, 0b00100, 0b00100, 0b00100, 0b01110},  // i
+    {0b00010, 0b00000, 0b00110, 0b00010, 0b00010, 0b10010, 0b01100},  // j
+    {0b10000, 0b10000, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010},  // k
+    {0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110},  // l
+    {0b00000, 0b00000, 0b11010, 0b10101, 0b10101, 0b10001, 0b10001},  // m
+    {0b00000, 0b00000, 0b10110, 0b11001, 0b10001, 0b10001, 0b10001},  // n
+    {0b00000, 0b00000, 0b01110, 0b10001, 0b10001, 0b10001, 0b01110},  // o
+    {0b00000, 0b00000, 0b11110, 0b10001, 0b11110, 0b10000, 0b10000},  // p
+    {0b00000, 0b00000, 0b01101, 0b10011, 0b01111, 0b00001, 0b00001},  // q
+    {0b00000, 0b00000, 0b10110, 0b11001, 0b10000, 0b10000, 0b10000},  // r
+    {0b00000, 0b00000, 0b01110, 0b10000, 0b01110, 0b00001, 0b11110},  // s
+    {0b01000, 0b01000, 0b11100, 0b01000, 0b01000, 0b01001, 0b00110},  // t
+    {0b00000, 0b00000, 0b10001, 0b10001, 0b10001, 0b10011, 0b01101},  // u
+    {0b00000, 0b00000, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100},  // v
+    {0b00000, 0b00000, 0b10001, 0b10001, 0b10101, 0b10101, 0b01010},  // w
+    {0b00000, 0b00000, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001},  // x
+    {0b00000, 0b00000, 0b10001, 0b10001, 0b01111, 0b00001, 0b01110},  // y
+    {0b00000, 0b00000, 0b11111, 0b00010, 0b00100, 0b01000, 0b11111},  // z
+};
+
+/// Whether pixel (`col` 0-4 from the left, `row` 0-6 from the top) of glyph `c` is set.
+/// Covers '0'-'9' and 'a'-'z'; anything else is blank.
+inline bool glyphPixel(uchar c, uint col, uint row) {
+    int index = -1;
+    if (c >= '0' && c <= '9') {
+        index = int(c - '0');
+    } else if (c >= 'a' && c <= 'z') {
+        index = int(c - 'a') + 10;
+    }
+    return index >= 0 && ((kFont5x7[index][row] >> (4 - col)) & 1u) != 0;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Animation easing (t is usually a step's progress in [0, 1))
+// ---------------------------------------------------------------------------------------------
+
+/// Linear fraction of the way through [from, to], clamped to [0, 1].
+inline float linear(float t, float from, float to) {
+    return metal::saturate((t - from) / (to - from));
+}
+
+/// Smoothstep-eased fraction of the way through [from, to].
+inline float phase(float t, float from, float to) {
+    return metal::smoothstep(0.0f, 1.0f, linear(t, from, to));
+}
+
+/// Overshoots ~10 % past 1 before settling: the "pop" in.
+inline float easeOutBack(float x) {
+    const float c1 = 1.70158f;
+    const float c3 = c1 + 1.0f;
+    const float y = x - 1.0f;
+    return 1.0f + c3 * y * y * y + c1 * y * y;
+}
+
+/// Damped spring from 1 to 0 over x in [0, 1]: crosses zero at 0.2, squashes to about -0.14
+/// at 0.4, rebounds slightly, and is exactly 0 at x = 1. The "boing" back to rest.
+inline float springBack(float x) {
+    x = metal::saturate(x);
+    return x >= 1.0f ? 0.0f : metal::exp(-5.0f * x) * metal::cos(2.5f * M_PI_F * x);
+}
+
+inline float easeOutCubic(float x) {
+    const float y = 1.0f - x;
+    return 1.0f - y * y * y;
+}
+
 }  // namespace aoc
 
 #endif  // __METAL_VERSION__

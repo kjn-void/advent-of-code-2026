@@ -9,6 +9,7 @@
 #   --part <n>    1 (default) or 2
 #   --size <WxH>  frame size, default 800x450
 #   --input <f>   use this input file instead of the cached input/<year>/dayNN.txt
+#   --example     use the puzzle's worked example (built into the solution) as input
 #   --out <dir>   output directory, default .build/viz-frames/<puzzle>-p<part>
 #   --cols <n>    columns in the sheet (default 2 for <= 4 frames, else 3)
 #
@@ -20,12 +21,13 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 cd "$root"
 
-usage() { sed -n '2,18s/^# \{0,1\}//p' "$0"; }
+usage() { sed -n '2,19s/^# \{0,1\}//p' "$0"; }
 
 config=debug
 part=1
 size=800x450
 input=""
+example=false
 out=""
 cols=""
 puzzle=""
@@ -36,6 +38,7 @@ while (($#)); do
         --part) part=$2; shift 2 ;;
         --size) size=$2; shift 2 ;;
         --input) input=$2; shift 2 ;;
+        --example) example=true; shift ;;
         --out) out=$2; shift 2 ;;
         --cols) cols=$2; shift 2 ;;
         -h | --help) usage; exit 0 ;;
@@ -50,7 +53,9 @@ if [[ -z "$puzzle" || ${#positions[@]} -eq 0 ]]; then
     usage >&2
     exit 2
 fi
-out=${out:-.build/viz-frames/$puzzle-p$part}
+suffix=""
+if $example; then suffix="-example"; fi
+out=${out:-.build/viz-frames/$puzzle-p$part$suffix}
 mkdir -p "$out"
 rm -f "$out"/frame-*.png "$out"/sheet.png
 
@@ -68,6 +73,7 @@ for pos in "${positions[@]}"; do
     frame="$out/frame-$pos.png"
     args=(--snapshot "$puzzle" --at "$pos" --part "$part" --size "$size" --out "$frame")
     if [[ -n "$input" ]]; then args+=(--input "$input"); fi
+    if $example; then args+=(--example); fi
     caption=$("$bin" "${args[@]}")
     echo "$pos  ${caption#"$frame: "}"
     frames+=("$frame")

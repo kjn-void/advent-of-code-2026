@@ -18,6 +18,7 @@ public final class Renderer: NSObject, MTKViewDelegate {
     public var scene: (any VisualizationScene)? {
         didSet {
             if let scene { camera.frame(scene.bounds, view: scene.preferredView) }
+            snapCamera = true
             startTime = CACurrentMediaTime()
             lastFrame = startTime
         }
@@ -27,6 +28,8 @@ public final class Renderer: NSObject, MTKViewDelegate {
     private let depthState: any MTLDepthStencilState
     private var startTime = CACurrentMediaTime()
     private var lastFrame = CACurrentMediaTime()
+    /// Jump straight to the scene's camera focus on the next frame instead of gliding.
+    private var snapCamera = true
     private static let sampleCount = 4
 
     public init(gpu: GPU) throws {
@@ -68,6 +71,7 @@ public final class Renderer: NSObject, MTKViewDelegate {
 
     public func resetCamera() {
         if let scene { camera.frame(scene.bounds, view: scene.preferredView) }
+        snapCamera = true
     }
 
     public func mtkView(_: MTKView, drawableSizeWillChange _: CGSize) {}
@@ -77,14 +81,20 @@ public final class Renderer: NSObject, MTKViewDelegate {
         commandBuffer.label = "Frame"
 
         let now = CACurrentMediaTime()
-        playback.advance(by: min(now - lastFrame, 0.1))
+        let elapsed = min(now - lastFrame, 0.1)
+        playback.advance(by: elapsed)
         lastFrame = now
 
         guard let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable else {
             commandBuffer.commit()
             return
         }
-        encodeFrame(commandBuffer, pass: pass, size: view.drawableSize, time: Float(now - startTime))
+        // Glide towards the scene's focus (time constant ~0.2 s); jump there right after a scene
+        // change or camera reset.
+        let follow: Float = snapCamera ? 1 : 1 - exp(-Float(elapsed) * 5)
+        snapCamera = false
+        encodeFrame(
+            commandBuffer, pass: pass, size: view.drawableSize, time: Float(now - startTime), follow: follow)
         commandBuffer.present(drawable)
         commandBuffer.commit()
     }
@@ -116,7 +126,7 @@ public final class Renderer: NSObject, MTKViewDelegate {
         pass.depthAttachment.storeAction = .dontCare
 
         guard let commandBuffer = gpu.queue.makeCommandBuffer() else { throw GPUError.noCommandBuffer }
-        encodeFrame(commandBuffer, pass: pass, size: CGSize(width: width, height: height), time: 0)
+        encodeFrame(commandBuffer, pass: pass, size: CGSize(width: width, height: height), time: 0, follow: 1)
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         if let error = commandBuffer.error { throw GPUError.execution(error) }
@@ -140,9 +150,16 @@ public final class Renderer: NSObject, MTKViewDelegate {
 
     /// Lets the scene encode its compute work, then draws its instances, into `commandBuffer`.
     private func encodeFrame(
-        _ commandBuffer: any MTLCommandBuffer, pass: MTLRenderPassDescriptor, size: CGSize, time: Float
+        _ commandBuffer: any MTLCommandBuffer,
+        pass: MTLRenderPassDescriptor,
+        size: CGSize,
+        time: Float,
+        follow: Float
     ) {
         if let scene {
+            if let focus = scene.cameraFocus(step: playback.step, progress: playback.progress, part: playback.part) {
+                camera.follow(focus, amount: follow)
+            }
             let frame = FrameContext(
                 gpu: gpu, commandBuffer: commandBuffer,
                 step: playback.step, progress: playback.progress, part: playback.part, time: time)

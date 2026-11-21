@@ -90,6 +90,18 @@ private struct PuzzleDetail: View {
         .navigationSubtitle(type.id.source)
         .toolbar {
             ToolbarItemGroup {
+                if type.exampleInput != nil {
+                    Picker(
+                        "Input",
+                        selection: Binding(
+                            get: { model.source(for: type) }, set: { model.setSource($0, for: type) })
+                    ) {
+                        Text("Example").tag(AppModel.InputSource.example)
+                        Text("Puzzle input").tag(AppModel.InputSource.puzzle)
+                    }
+                    .pickerStyle(.segmented)
+                    .help("Visualize the puzzle's worked example or your real input")
+                }
                 Button("Reset View", systemImage: "scope") { model.renderer?.resetCamera() }
                 Button("Re-download Input", systemImage: "arrow.down.circle") {
                     Task { await model.load(refresh: true) }

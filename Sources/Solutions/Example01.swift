@@ -12,6 +12,16 @@ import Metal
 public final class Example01: Solution {
     public static let id = PuzzleID.example(1, year: 2023, day: 1)
     public static let title = "Trebuchet?!"
+    /// The part 2 example (part 1's has no spelled digits, so this one shows both parts).
+    public static let exampleInput: String? = """
+        two1nine
+        eightwothree
+        abcone2threexyz
+        xtwone3four
+        4nineeightseven2
+        zoneight234
+        7pqrstsixteen
+        """
 
     let gpu: GPU
     let bytes: GPUBuffer<UInt8>

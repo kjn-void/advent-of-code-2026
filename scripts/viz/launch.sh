@@ -3,8 +3,9 @@
 # Needs the WindowServer: run it OUTSIDE agent sandboxes (inside one the app fails with
 # "!cgsConnection" or opens no window). For pictures without a window use scripts/viz/frames.sh.
 #
-# Usage: scripts/viz/launch.sh [-c debug|release] [puzzle]   start (replacing any running instance)
-#        scripts/viz/launch.sh --stop                        stop the running instance
+# Usage: scripts/viz/launch.sh [-c debug|release] [--example] [puzzle]   start (replacing any running one)
+#        scripts/viz/launch.sh --stop                                   stop the running instance
+#   --example   start on the puzzle's worked example instead of the real input
 #
 # Environment is passed through, e.g. Metal API and shader validation:
 #   MTL_DEBUG_LAYER=1 MTL_SHADER_VALIDATION=1 scripts/viz/launch.sh e1
@@ -28,11 +29,13 @@ stop() {
 
 config=debug
 puzzle=""
+args=()
 while (($#)); do
     case "$1" in
         -c) config=$2; shift 2 ;;
         --stop) stop; exit 0 ;;
-        -h | --help) sed -n '2,12s/^# \{0,1\}//p' "$0"; exit 0 ;;
+        --example) args+=(--example); shift ;;
+        -h | --help) sed -n '2,13s/^# \{0,1\}//p' "$0"; exit 0 ;;
         -*) echo "unknown option: $1" >&2; exit 2 ;;
         *) puzzle=$1; shift ;;
     esac
@@ -49,11 +52,8 @@ bin="$(swift build -c "$config" ${SWIFT_BUILD_FLAGS:-} --show-bin-path)/aoc2026-
 stop
 
 # Detach fully (own stdin/stdout, nohup) so it survives the agent's shell command returning.
-if [[ -n "$puzzle" ]]; then
-    nohup "$bin" "$puzzle" >"$log" 2>&1 </dev/null &
-else
-    nohup "$bin" >"$log" 2>&1 </dev/null &
-fi
+if [[ -n "$puzzle" ]]; then args=("$puzzle" "${args[@]}"); fi
+nohup "$bin" ${args[@]+"${args[@]}"} >"$log" 2>&1 </dev/null &
 pid=$!
 disown "$pid" 2>/dev/null || true
 echo "$pid" >"$pidfile"

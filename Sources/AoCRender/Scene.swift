@@ -40,6 +40,14 @@ public protocol VisualizationScene: AnyObject {
     var stepCount: Int { get }
     /// Default playback speed.
     var preferredStepsPerSecond: Double { get }
+    /// Timeline length for `part` (1 or 2), for scenes whose parts animate different things.
+    /// Defaults to `stepCount`.
+    func stepCount(part: Int) -> Int
+    /// Default playback speed for `part`. Defaults to `preferredStepsPerSecond`.
+    func preferredStepsPerSecond(part: Int) -> Double
+    /// World point the camera should keep centred (e.g. a character walking around a big map), or
+    /// nil for a fixed camera. The renderer glides towards it until the user pans by hand.
+    func cameraFocus(step: Int, progress: Float, part: Int) -> SIMD3<Float>?
 
     /// Called every frame before drawing. Encode compute work into `frame.commandBuffer`
     /// (via `frame.gpu.encode(into:)`).
@@ -52,6 +60,9 @@ public protocol VisualizationScene: AnyObject {
 public extension VisualizationScene {
     var preferredView: CameraView { CameraView() }
     var preferredStepsPerSecond: Double { 1 }
+    func stepCount(part _: Int) -> Int { stepCount }
+    func preferredStepsPerSecond(part _: Int) -> Double { preferredStepsPerSecond }
+    func cameraFocus(step _: Int, progress _: Float, part _: Int) -> SIMD3<Float>? { nil }
     func caption(step _: Int, part _: Int) -> String { "" }
 }
 
@@ -104,7 +115,22 @@ public final class Playback {
     public var isPlaying = false
     public var stepsPerSecond: Double = 1
     public var stepCount = 0
-    public var part = 1
+    /// Switching parts switches timelines when the scene's parts differ in length; the position
+    /// then restarts at 0 (a step of one part means nothing in the other).
+    public var part = 1 {
+        didSet {
+            guard part != oldValue, timelines.indices.contains(part - 1) else { return }
+            let timeline = timelines[part - 1]
+            if timeline.steps != stepCount {
+                stepCount = timeline.steps
+                stepsPerSecond = timeline.speed
+                position = 0
+            }
+        }
+    }
+
+    /// (steps, default speed) per part, from the scene.
+    private var timelines: [(steps: Int, speed: Double)] = []
 
     public init() {}
 
@@ -121,8 +147,19 @@ public final class Playback {
     }
 
     public func reset(stepCount: Int, stepsPerSecond: Double) {
+        timelines = []
         self.stepCount = stepCount
         self.stepsPerSecond = stepsPerSecond
+        position = 0
+        isPlaying = true
+    }
+
+    /// Loads `scene`'s timelines for both parts, keeping the current part, and starts playing.
+    public func reset(for scene: any VisualizationScene) {
+        timelines = [1, 2].map { (scene.stepCount(part: $0), scene.preferredStepsPerSecond(part: $0)) }
+        let timeline = timelines[part - 1]
+        stepCount = timeline.steps
+        stepsPerSecond = timeline.speed
         position = 0
         isPlaying = true
     }
