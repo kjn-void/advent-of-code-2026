@@ -125,7 +125,12 @@ private struct AnswerPanel: View {
             if let report = state.report {
                 answer("Part 1", report.part1)
                 answer("Part 2", report.part2)
-                Text("parse \(report.parse.pretty)").font(.caption).foregroundStyle(.secondary)
+                Text("parse \(report.parse.pretty)" + (report.runs > 1 ? " · fastest of ≥ \(report.runs) runs" : ""))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .help(
+                        report.runs > 1
+                            ? "Fast solve: each phase was re-run warm for ~100 ms; the fastest run is shown"
+                            : "Single cold run (the solve took over 100 ms)")
             } else if let error = state.error {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
             } else {

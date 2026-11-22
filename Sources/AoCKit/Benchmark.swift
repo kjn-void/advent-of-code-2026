@@ -58,7 +58,8 @@ public enum Benchmark {
         return Result(id: type.id, title: type.title, parse: parse, part1: part1, part2: part2, full: full)
     }
 
-    private static func measure(_ gpu: GPU, _ options: Options, _ body: () throws -> Void) throws -> Stats {
+    /// Warm-up run, then timed runs until `options.budget` is spent (within the iteration bounds).
+    static func measure(_ gpu: GPU, _ options: Options, _ body: () throws -> Void) throws -> Stats {
         try body()  // warm-up
         gpu.resetGPUTime()
 

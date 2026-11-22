@@ -13,7 +13,7 @@ let usage = """
     OPTIONS
       -p, --part <1|2>  solve only one part
       -q, --quiet       print bare answers, one per line
-      -t, --time        print timings to stderr
+      -t, --time        print timings to stderr (fast solves: fastest warm re-run)
       -i, --input <f>   read input from <f> instead of input/<year>/dayNN.txt
       -e, --example     use the puzzle's worked example as input (where the solution has one)
       -r, --refresh     re-download input even if cached
@@ -149,7 +149,8 @@ func printReport(_ report: SolveReport, for solution: any Solution.Type, options
     if options.time {
         printStderr(
             "  parse \(report.parse.pretty) · part 1 \(report.part1.elapsed.pretty)"
-                + " · part 2 \(report.part2.elapsed.pretty)")
+                + " · part 2 \(report.part2.elapsed.pretty)"
+                + (report.runs > 1 ? " (fastest of ≥ \(report.runs) warm runs)" : " (one cold run)"))
     }
     if !options.quiet { print() }
     return succeeded
@@ -216,7 +217,9 @@ func run() async throws -> Int32 {
 
         let report: SolveReport
         do {
-            report = try Runner.solve(solution, input: input, gpu: gpu, parts: options.parts)
+            report = try Runner.solve(
+                solution, input: input, gpu: gpu, parts: options.parts,
+                stableBelow: options.time ? .milliseconds(100) : nil)
         } catch {
             printError("\(solution.id): \(error)")
             failed = true

@@ -106,7 +106,8 @@ final class AppModel {
 
         let gpu = gpu
         let result = await Task.detached { () -> Result<SolveReport, SolveFailure> in
-            Result { try Runner.solve(type, input: input, gpu: gpu) }.mapError(SolveFailure.init)
+            Result { try Runner.solve(type, input: input, gpu: gpu, stableBelow: .milliseconds(100)) }
+                .mapError(SolveFailure.init)
         }.value
         switch result {
         case .success(let report): states[id, default: PuzzleState()].report = report

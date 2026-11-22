@@ -85,7 +85,7 @@ aoc2026 [options] <puzzle>...
   1 ... 12 | e1 | all       puzzles (days of 2026, examples, or everything registered)
   -p, --part <1|2>          one part only
   -q, --quiet               bare answers, one per line (for scripts)
-  -t, --time                timings to stderr
+  -t, --time                timings to stderr (solves under 100 ms: fastest warm re-run)
   -i, --input <file>        explicit input file (e.g. an example you saved)
   -e, --example             the puzzle's worked example, built into the solution
   -r, --refresh             re-download input
