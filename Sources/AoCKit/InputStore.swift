@@ -68,7 +68,9 @@ public struct InputStore: Sendable {
     }
 
     /// `AOC_ROOT`, else the first directory containing Package.swift walking up from the
-    /// current directory, then from the executable (`.build/<config>/aoc2026` → repo root).
+    /// current directory, then from the executable (`.build/<config>/aoc2026` → repo root), then
+    /// from this source file's build-time location (apps started by Xcode or the Dock run in `/`
+    /// from a binary in DerivedData, so neither of the others finds the repo).
     public static func locateRoot() -> URL {
         let fm = FileManager.default
         if let env = ProcessInfo.processInfo.environment["AOC_ROOT"], !env.isEmpty {
@@ -77,6 +79,7 @@ public struct InputStore: Sendable {
         let starts = [
             URL(filePath: fm.currentDirectoryPath, directoryHint: .isDirectory),
             Bundle.main.executableURL?.deletingLastPathComponent(),
+            URL(filePath: #filePath).deletingLastPathComponent(),
         ].compactMap(\.self)
 
         for start in starts {
