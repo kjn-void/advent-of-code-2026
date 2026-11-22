@@ -83,7 +83,8 @@ int digitAt(const device uchar* bytes, uint i, uint count, bool spelled, thread 
 // -------------------------------------------------------------------------------------------------
 // Visualisation: the current line rendered as extruded 5x7 voxel text, animated by `progress`:
 //
-//   0.00  letters drop in (next lines wait dimmed below)
+//   0.00  the line eases up from the queue (dimmed lines below) into place, brightening; the
+//         queue moves up one slot behind it ... 0.10 in place
 //   0.10  every digit token lights up blue (part 2: spelled words too); first green, last orange
 //   0.20  characters outside [first, last] turn red ... 0.26 and explode
 //   0.38  characters between first and last turn red ... 0.44 and explode
@@ -92,7 +93,6 @@ int digitAt(const device uchar* bytes, uint i, uint count, bool spelled, thread 
 //   0.76  the value flies up into the running total
 //   0.86  the total pops: zooms in with overshoot, counts up fast with a digit wave,
 //         then springs back (elastic) from 0.93
-//   0.90  the queue (dimmed lines below) moves up
 // -------------------------------------------------------------------------------------------------
 
 namespace {
@@ -100,6 +100,8 @@ namespace {
 constant float kAdvance = 6.0f;                              // glyph width + 1 voxel gap
 constant float3 kQueueOffset = float3(0.0f, -11.0f, -5.0f);  // per queued line: below and behind
 constant float kTotalY = 22.0f;
+constant float kArrived = 0.10f;           // the line has eased into place
+constant float kQueuedBrightness = 0.30f;  // first queued line; further ones dimmer
 
 // Running-total "pop" timeline (fractions of a line's progress).
 constant float kArrive = 0.86f;    // the line value lands; zoom-in and count-up start
@@ -217,17 +219,15 @@ float glyphX(float c, float length) {
             return;
         }
 
-        const float advance = aoc::phase(t, 0.90f, 1.0f);
+        // Every line moves up one queue slot at the start of the step, so the current line arrives
+        // from where the previous step left it. `slotPos` is its distance from the front (0 = in place).
+        const float slotPos = float(k) + 1.0f - aoc::phase(t, 0.0f, kArrived);
         pos = float3(glyphX(float(c), float(info.length)), 0.0f, 0.0f) + pixelOffset;
-        pos += kQueueOffset * (float(k) - advance);
-        size = 1.0f;
+        pos += kQueueOffset * slotPos;
+        size = saturate(float(p.queuedLines) + 1.0f - slotPos);  // a newly queued line fades in at the back
+        color = kWhite * (slotPos < 1.0f ? mix(1.0f, kQueuedBrightness, slotPos) : kQueuedBrightness / slotPos);
 
-        if (k > 0) {
-            color = kWhite * mix(0.30f, 0.80f, advance * float(k == 1)) / float(k);
-        } else {
-            // Drop in, staggered by column.
-            pos.y += 18.0f * (1.0f - aoc::phase(t, float(c) * 0.0015f, 0.08f + float(c) * 0.0015f));
-
+        if (k == 0) {
             const bool inFirst = info.hasDigits && c >= info.firstPos && c < info.firstPos + info.firstLen;
             const bool inLast = info.hasDigits && c >= info.lastPos && c < info.lastPos + info.lastLen;
             const bool outer = !info.hasDigits || c < info.firstPos || c >= info.lastPos + info.lastLen;

@@ -123,11 +123,11 @@ Each scene is GPU-driven: per frame, the scene encodes a compute kernel that wri
 boxes (position, scale, colour) straight from the solution's buffers, and the renderer draws them
 instanced with simple lighting, edge shading and fog. Nothing goes through the CPU.
 
-Example 1's animation: the line drops in as extruded 5×7 voxel text. Every digit token lights up
-(in part 2 spelled-out words too), with the first one green and the last one orange. Characters
-outside them turn red and explode, then those in the middle do the same. Spelled words convert
-into their digit, the two digits slide together into the line's value, and the value flies into
-the running total.
+Example 1's animation: the next line, extruded 5×7 voxel text, eases up from the queue into
+place. Every digit token lights up (in part 2 spelled-out words too), with the first one green and
+the last one orange. Characters outside them turn red and explode, then those in the middle do the
+same. Spelled words convert into their digit, the two digits slide together into the line's value,
+and the value flies into the running total.
 
 Example 2's animation is a little arcade game. Part 1: the guard patrols the map leaving a glowing
 trail of horizontal and vertical bars, so corners and crossings show as "+" like in the puzzle's
