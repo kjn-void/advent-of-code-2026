@@ -25,13 +25,16 @@ public struct InputStore: Sendable {
     }
 
     /// Loads input for `id`, downloading and caching it on a cache miss.
-    /// - Parameter refresh: re-download even if a cached file exists.
-    public func load(_ id: PuzzleID, refresh: Bool = false) async throws -> Input {
+    /// - Parameters:
+    ///   - refresh: re-download even if a cached file exists.
+    ///   - session: cookie to download with (e.g. picked up by the visualizer's login, held only in
+    ///     memory); falls back to `session()`.
+    public func load(_ id: PuzzleID, refresh: Bool = false, session: String? = nil) async throws -> Input {
         let cached = cachedInputURL(for: id)
         if !refresh, let text = try? String(contentsOf: cached, encoding: .utf8) {
             return Input(text)
         }
-        guard let session = session() else { throw AoCClient.FetchError.missingSession }
+        guard let session = session ?? self.session() else { throw AoCClient.FetchError.missingSession }
 
         let text = try await AoCClient(session: session).fetchInput(year: id.year, day: id.aocDay)
         try FileManager.default.createDirectory(

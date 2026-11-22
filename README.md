@@ -62,7 +62,13 @@ inputs). On a cache miss the CLI and the visualizer download the input from
 2025 project's `aocnet` package did. Inputs are fetched once; `--refresh` forces a re-download.
 Requests before a puzzle unlocks (midnight US Eastern) are refused locally.
 
-**Getting the session cookie:** log in at adventofcode.com, open the browser dev tools
+**Easiest: log in from the visualizer.** Press the toolbar's Puzzle button (compass): the puzzle
+page opens inside the app. Log in there and the app picks up the session cookie and downloads every
+missing input of the registered puzzles that has unlocked. The cookie is kept in memory for that
+run of the app only (the page uses a private, non-persistent web data store), so nothing is written
+to disk; inputs, once downloaded, never need it again.
+
+**Getting the session cookie by hand** (for the CLI): log in at adventofcode.com, open the browser dev tools
 (Safari ⌥⌘I → Storage, Chrome F12 → Application, Firefox F12 → Storage), and copy the value of
 the `session` cookie for `https://adventofcode.com`.
 

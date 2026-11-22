@@ -15,6 +15,13 @@ final class AppModel {
 
     let gpu = GPU.shared
     let store = InputStore()
+    /// In-app adventofcode.com login (the puzzle browser).
+    let login = AoCLogin()
+    /// Session cookie from that login. Memory only: never written to disk.
+    private(set) var loginSession: String?
+    var hasLoginSession: Bool { loginSession != nil }
+    /// What the login is doing ("Downloading input 2/5…", then a summary), for the puzzle window.
+    private(set) var loginStatus: String?
     let renderer: Renderer?
     let rendererError: String?
 
@@ -48,7 +55,47 @@ final class AppModel {
         }
         let initial = initialSelection.flatMap(Registry.solution(named:)) ?? Registry.all.first
         selection = initial?.id
+        login.onSession = { [weak self] cookie in self?.sessionFound(cookie) }
         Task { await load() }
+    }
+
+    /// A login in the puzzle browser produced a session cookie: fetch every input still missing.
+    private func sessionFound(_ cookie: String) {
+        guard cookie != loginSession else { return }
+        loginSession = cookie
+        Task { await fetchMissingInputs() }
+    }
+
+    /// Downloads, one at a time, the input of every registered puzzle that has unlocked but is not
+    /// cached yet. Inputs never change, so after this the cookie is only needed for new days.
+    func fetchMissingInputs() async {
+        var seen = Set<String>()
+        let missing = Registry.all.filter { type in
+            let id = type.id
+            return seen.insert("\(id.year)/\(id.aocDay)").inserted && !store.hasCachedInput(for: id)
+                && Date.now >= AoCClient.unlockDate(day: id.aocDay, year: id.year)
+        }
+        guard !missing.isEmpty else {
+            loginStatus = "Logged in. All unlocked inputs are already downloaded."
+            return
+        }
+        var failures: [String] = []
+        for (index, type) in missing.enumerated() {
+            loginStatus = "Logged in. Downloading input \(index + 1)/\(missing.count) (\(type.id))…"
+            do {
+                _ = try await store.load(type.id, session: loginSession)
+            } catch {
+                failures.append("\(type.id): \(error)")
+            }
+        }
+        let fetched = missing.count - failures.count
+        loginStatus =
+            "Logged in. Downloaded \(fetched) input\(fetched == 1 ? "" : "s")."
+            + (failures.isEmpty ? "" : " Failed: " + failures.joined(separator: "; "))
+        // Show the selected puzzle's real input if it was waiting for one.
+        if let id = selection, states[id]?.error != nil || !hasScene {
+            await load()
+        }
     }
 
     var selectedType: (any Solution.Type)? {
@@ -87,7 +134,7 @@ final class AppModel {
             if source(for: type) == .example, let example = type.exampleInput {
                 input = Input(example)
             } else {
-                input = try await store.load(id, refresh: refresh)
+                input = try await store.load(id, refresh: refresh, session: loginSession)
             }
         } catch {
             states[id, default: PuzzleState()].isSolving = false
@@ -96,7 +143,13 @@ final class AppModel {
                 sceneError = "Re-download failed: \(error). Still showing the cached input."
                 return
             }
-            states[id, default: PuzzleState()].error = "Input: \(error)"
+            states[id, default: PuzzleState()].error =
+                if case AoCClient.FetchError.missingSession = error {
+                    "No puzzle input yet. Press the Puzzle button (compass) and log in to Advent of Code, "
+                        + "or switch to Example."
+                } else {
+                    "Input: \(error)"
+                }
             clearScene()
             return
         }

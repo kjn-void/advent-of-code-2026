@@ -63,6 +63,7 @@ private struct Sidebar: View {
 private struct PuzzleDetail: View {
     @Bindable var model: AppModel
     let type: any Solution.Type
+    @State private var showingPuzzle = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -86,6 +87,9 @@ private struct PuzzleDetail: View {
                 TimelineBar(model: model, playback: model.playback)
             }
         }
+        .sheet(isPresented: $showingPuzzle) {
+            if let url = URL(string: type.id.url) { PuzzleBrowser(url: url, model: model) }
+        }
         .navigationTitle("\(type.id.description) — \(type.title)")
         .navigationSubtitle(type.id.source)
         .toolbar {
@@ -108,9 +112,8 @@ private struct PuzzleDetail: View {
                 }
                 .help("Download this puzzle's input from adventofcode.com again (needs AOC_SESSION)")
                 .disabled(model.source(for: type) == .example)
-                Link(destination: URL(string: type.id.url)!) {
-                    Label("Puzzle", systemImage: "safari")
-                }
+                Button("Puzzle", systemImage: "safari") { showingPuzzle = true }
+                    .help("Open the puzzle page. Log in there and the app downloads all missing inputs.")
             }
         }
     }
