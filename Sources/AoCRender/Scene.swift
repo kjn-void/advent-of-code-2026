@@ -121,9 +121,9 @@ public final class Playback {
         didSet {
             guard part != oldValue, timelines.indices.contains(part - 1) else { return }
             let timeline = timelines[part - 1]
+            stepsPerSecond = timeline.speed
             if timeline.steps != stepCount {
                 stepCount = timeline.steps
-                stepsPerSecond = timeline.speed
                 position = 0
             }
         }

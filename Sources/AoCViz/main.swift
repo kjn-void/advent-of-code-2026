@@ -63,14 +63,30 @@ func snapshot(_ arguments: [String]) async throws {
     var iterator = arguments.makeIterator()
     while let argument = iterator.next() {
         switch argument {
-        case "--at": position = Double(iterator.next() ?? "") ?? position
-        case "--part": part = Int(iterator.next() ?? "") ?? part
-        case "--out": out = iterator.next() ?? out
-        case "--input": inputFile = iterator.next()
+        case "--at":
+            guard let raw = iterator.next(), let parsed = Double(raw) else {
+                throw SolutionError.malformedInput("--at requires a number")
+            }
+            position = parsed
+        case "--part":
+            guard let raw = iterator.next(), let parsed = Int(raw), [1, 2].contains(parsed) else {
+                throw SolutionError.malformedInput("--part must be 1 or 2")
+            }
+            part = parsed
+        case "--out":
+            guard let raw = iterator.next() else { throw SolutionError.malformedInput("--out requires a path") }
+            out = raw
+        case "--input":
+            guard let raw = iterator.next() else { throw SolutionError.malformedInput("--input requires a path") }
+            inputFile = raw
         case "--example": example = true
         case "--size":
-            let parts = (iterator.next() ?? "").split(separator: "x").compactMap { Int($0) }
-            if parts.count == 2 { size = (parts[0], parts[1]) }
+            let raw = iterator.next() ?? ""
+            let parts = raw.split(separator: "x").compactMap { Int($0) }
+            guard parts.count == 2, parts[0] > 0, parts[1] > 0 else {
+                throw SolutionError.malformedInput("--size must be WxH with positive integers")
+            }
+            size = (parts[0], parts[1])
         default: puzzle = argument
         }
     }

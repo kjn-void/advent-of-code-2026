@@ -14,6 +14,8 @@ struct BoxVertexOut {
     float4 color;
 };
 
+constant bool kTranslucentPass [[function_constant(0)]];
+
 // 6 faces x 2 triangles x 3 vertices, counter-clockwise when viewed from outside.
 constant float3 kFaceNormals[6] = {float3(1, 0, 0),  float3(-1, 0, 0), float3(0, 1, 0),
                                    float3(0, -1, 0), float3(0, 0, 1),  float3(0, 0, -1)};
@@ -38,6 +40,16 @@ static float3 cubeCorner(uint vid, thread float3& normal) {
                                    const device AoCInstance* instances [[buffer(0)]],
                                    constant AoCFrameUniforms& frame [[buffer(1)]]) {
     const AoCInstance inst = instances[iid];
+    const bool isTranslucent = inst.color.a < 0.999f;
+    if (inst.color.a <= 0.0f || isTranslucent != kTranslucentPass) {
+        BoxVertexOut culled;
+        culled.position = float4(2.0f, 2.0f, 2.0f, 1.0f);
+        culled.worldPosition = float3(0.0f);
+        culled.normal = float3(0.0f, 1.0f, 0.0f);
+        culled.local = float3(0.0f);
+        culled.color = float4(0.0f);
+        return culled;
+    }
     float3 normal;
     const float3 local = cubeCorner(vid, normal);
     const float3 world = inst.position + local * inst.scale;

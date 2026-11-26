@@ -24,8 +24,10 @@ public final class Renderer: NSObject, MTKViewDelegate {
         }
     }
 
-    private let pipeline: any MTLRenderPipelineState
-    private let depthState: any MTLDepthStencilState
+    private let opaquePipeline: any MTLRenderPipelineState
+    private let translucentPipeline: any MTLRenderPipelineState
+    private let opaqueDepthState: any MTLDepthStencilState
+    private let translucentDepthState: any MTLDepthStencilState
     private var startTime = CACurrentMediaTime()
     private var lastFrame = CACurrentMediaTime()
     /// Jump straight to the scene's camera focus on the next frame instead of gliding.
@@ -36,25 +38,38 @@ public final class Renderer: NSObject, MTKViewDelegate {
         self.gpu = gpu
         let library = try gpu.library(named: "AoCRender", in: .module)
 
-        let descriptor = MTLRenderPipelineDescriptor()
-        descriptor.label = "Boxes"
-        descriptor.vertexFunction = library.makeFunction(name: "box_vertex")
-        descriptor.fragmentFunction = library.makeFunction(name: "box_fragment")
-        descriptor.rasterSampleCount = Self.sampleCount
-        descriptor.depthAttachmentPixelFormat = .depth32Float
-        let color = descriptor.colorAttachments[0]!
-        color.pixelFormat = .bgra8Unorm_srgb
-        color.isBlendingEnabled = true
-        color.sourceRGBBlendFactor = .sourceAlpha
-        color.destinationRGBBlendFactor = .oneMinusSourceAlpha
-        color.sourceAlphaBlendFactor = .one
-        color.destinationAlphaBlendFactor = .oneMinusSourceAlpha
-        pipeline = try gpu.device.makeRenderPipelineState(descriptor: descriptor)
+        func makePipeline(translucent: Bool) throws -> any MTLRenderPipelineState {
+            var flag = translucent
+            let constants = MTLFunctionConstantValues()
+            constants.setConstantValue(&flag, type: .bool, index: 0)
+            let descriptor = MTLRenderPipelineDescriptor()
+            descriptor.label = translucent ? "Boxes (translucent)" : "Boxes (opaque)"
+            descriptor.vertexFunction = try library.makeFunction(name: "box_vertex", constantValues: constants)
+            descriptor.fragmentFunction = library.makeFunction(name: "box_fragment")
+            descriptor.rasterSampleCount = Self.sampleCount
+            descriptor.depthAttachmentPixelFormat = .depth32Float
+            let color = descriptor.colorAttachments[0]!
+            color.pixelFormat = .bgra8Unorm_srgb
+            color.isBlendingEnabled = translucent
+            if translucent {
+                color.sourceRGBBlendFactor = .sourceAlpha
+                color.destinationRGBBlendFactor = .oneMinusSourceAlpha
+                color.sourceAlphaBlendFactor = .one
+                color.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            }
+            return try gpu.device.makeRenderPipelineState(descriptor: descriptor)
+        }
+        opaquePipeline = try makePipeline(translucent: false)
+        translucentPipeline = try makePipeline(translucent: true)
 
-        let depth = MTLDepthStencilDescriptor()
-        depth.depthCompareFunction = .less
-        depth.isDepthWriteEnabled = true
-        depthState = gpu.device.makeDepthStencilState(descriptor: depth)!
+        func makeDepthState(write: Bool) -> any MTLDepthStencilState {
+            let depth = MTLDepthStencilDescriptor()
+            depth.depthCompareFunction = .less
+            depth.isDepthWriteEnabled = write
+            return gpu.device.makeDepthStencilState(descriptor: depth)!
+        }
+        opaqueDepthState = makeDepthState(write: true)
+        translucentDepthState = makeDepthState(write: false)
         super.init()
     }
 
@@ -177,16 +192,22 @@ public final class Renderer: NSObject, MTKViewDelegate {
         uniforms.time = time
         uniforms.fogDensity = 0.35 / max(camera.distance * 2.5, 1)
 
+        let count = min(scene.instanceCount, scene.instances.count)
         encoder.label = "Boxes"
-        encoder.setRenderPipelineState(pipeline)
-        encoder.setDepthStencilState(depthState)
         encoder.setCullMode(.back)
         encoder.setFrontFacing(.counterClockwise)
         encoder.setVertexBuffer(scene.instances.raw, offset: 0, index: 0)
         encoder.setVertexBytes(&uniforms, length: MemoryLayout<AoCFrameUniforms>.stride, index: 1)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<AoCFrameUniforms>.stride, index: 1)
-        encoder.drawPrimitives(
-            type: .triangle, vertexStart: 0, vertexCount: 36,
-            instanceCount: min(scene.instanceCount, scene.instances.count))
+
+        // Draw opaque boxes first with depth writes, then translucent boxes without depth writes
+        // so transparent geometry does not punch holes through objects behind it.
+        encoder.setRenderPipelineState(opaquePipeline)
+        encoder.setDepthStencilState(opaqueDepthState)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: count)
+
+        encoder.setRenderPipelineState(translucentPipeline)
+        encoder.setDepthStencilState(translucentDepthState)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: count)
     }
 }

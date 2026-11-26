@@ -120,7 +120,9 @@ func printStderr(_ message: String) {
 
 /// Launches the visualizer that sits next to this binary (both live in .build/<config>/).
 func launchVisualizer(puzzle: String?, example: Bool) throws -> Never {
-    let directory = URL(filePath: CommandLine.arguments[0]).deletingLastPathComponent()
+    let directory =
+        Bundle.main.executableURL?.deletingLastPathComponent()
+        ?? URL(filePath: CommandLine.arguments[0]).deletingLastPathComponent()
     let viz = directory.appending(path: "aoc2026-viz")
     guard FileManager.default.isExecutableFile(atPath: viz.path(percentEncoded: false)) else {
         throw CLIError.usage("aoc2026-viz not built; run `swift build` (or `swift run aoc2026-viz`)")
@@ -174,6 +176,9 @@ func run() async throws -> Int32 {
     }
 
     let solutions = try resolve(options.puzzles)
+    if options.example, options.inputFile != nil {
+        throw CLIError.usage("--example and --input cannot be used together")
+    }
     if options.inputFile != nil, solutions.count != 1 {
         throw CLIError.usage("--input works with exactly one puzzle")
     }
