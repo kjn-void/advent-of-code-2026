@@ -15,6 +15,9 @@ kernels. The same code runs three ways:
 every piece: input download, GPU solve, unit tests from the puzzle examples, benchmarks and a
 visualization. **Example 2** is AoC 2024 day 6 ("Guard Gallivant"): a grid walk, a massively
 parallel GPU search, and a 2.5D game-style visualization with a camera that follows the guard.
+**Example 3** is AoC 2022 day 17 ("Pyroclastic Flow"): bitboard rock simulation with exact
+contour cycle detection for 10¹² rocks, and a 3D volcanic-chamber visualization with
+translucent glass walls, animated gas jets, and a cycle-match hyper-jump.
 
 Requirements: an Apple silicon Mac, full Xcode 26 or later (Swift 6.2 or later), and the
 separately installed Metal Toolchain. The binaries target macOS 15 or later; check

@@ -6,6 +6,7 @@ public enum Registry {
     public static let all: [any Solution.Type] = [
         Example01.self,
         Example02.self,
+        Example03.self,
             // new-day: insert above
     ].sorted { $0.id < $1.id }
 

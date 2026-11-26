@@ -90,7 +90,7 @@ struct FrameworkGPUTests {
 
     @Test @MainActor func rendererSnapshotsScenesIncludingEmptyInput() throws {
         let renderer = try Renderer(gpu: .shared)
-        for type in [Example01.self, Example02.self] as [any Visualizable.Type] {
+        for type in [Example01.self, Example02.self, Example03.self] as [any Visualizable.Type] {
             let example = type.exampleInput
             let input = Input(try #require(example))
             let scene = try type.makeScene(input: input, gpu: .shared)
