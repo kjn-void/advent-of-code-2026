@@ -140,6 +140,8 @@ final class Example01Scene: VisualizationScene {
     func update(_ frame: FrameContext) throws {
         let part = frame.part == 2 ? 1 : 0
         let line = min(frame.step, max(solution.lines.count - 1, 0))
+        let totalBefore = line < prefix[part].count ? prefix[part][line] : 0
+        let totalAfter = line + 1 < prefix[part].count ? prefix[part][line + 1] : totalBefore
         let params = Example01VizParams(
             byteCount: UInt32(solution.bytes.count),
             lineCount: UInt32(solution.lines.count),
@@ -148,8 +150,8 @@ final class Example01Scene: VisualizationScene {
             progress: frame.progress,
             maxLineLength: UInt32(max(solution.longestLine, 1)),
             queuedLines: UInt32(queuedLines),
-            totalBefore: UInt32(clamping: prefix[part][line]),
-            totalAfter: UInt32(clamping: prefix[part][line + 1]))
+            totalBefore: UInt32(clamping: totalBefore),
+            totalAfter: UInt32(clamping: totalAfter))
 
         let evaluation = parts[part]
         try frame.gpu.encode(into: frame.commandBuffer) { encoder in

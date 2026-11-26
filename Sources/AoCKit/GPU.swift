@@ -71,7 +71,9 @@ public final class GPU: @unchecked Sendable {
         let length = max(values.count, 1) * MemoryLayout<T>.stride
         let raw = values.withUnsafeBytes { bytes -> (any MTLBuffer)? in
             guard let base = bytes.baseAddress else {
-                return device.makeBuffer(length: length, options: .storageModeShared)
+                let empty = device.makeBuffer(length: length, options: .storageModeShared)
+                if let empty { memset(empty.contents(), 0, length) }
+                return empty
             }
             return device.makeBuffer(bytes: base, length: length, options: .storageModeShared)
         }
@@ -134,10 +136,11 @@ public struct ComputeEncoder {
 
     /// Dispatches `pipeline` over a 1D grid of `count` threads.
     public func dispatch(_ pipeline: any MTLComputePipelineState, count: Int, _ arguments: KernelArgument...) {
+        guard count > 0 else { return }
         bind(pipeline, arguments)
-        let width = min(pipeline.maxTotalThreadsPerThreadgroup, max(count, 1))
+        let width = min(pipeline.maxTotalThreadsPerThreadgroup, count)
         encoder.dispatchThreads(
-            MTLSize(width: max(count, 1), height: 1, depth: 1),
+            MTLSize(width: count, height: 1, depth: 1),
             threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1)
         )
     }
@@ -146,11 +149,12 @@ public struct ComputeEncoder {
     public func dispatch(
         _ pipeline: any MTLComputePipelineState, width: Int, height: Int, _ arguments: KernelArgument...
     ) {
+        guard width > 0, height > 0 else { return }
         bind(pipeline, arguments)
         let w = pipeline.threadExecutionWidth
         let h = max(1, pipeline.maxTotalThreadsPerThreadgroup / w)
         encoder.dispatchThreads(
-            MTLSize(width: max(width, 1), height: max(height, 1), depth: 1),
+            MTLSize(width: width, height: height, depth: 1),
             threadsPerThreadgroup: MTLSize(width: w, height: h, depth: 1)
         )
     }
@@ -165,7 +169,10 @@ public struct ComputeEncoder {
             case .buffer(let buffer, let offset):
                 encoder.setBuffer(buffer, offset: offset, index: slot)
             case .bytes(let bytes):
-                bytes.withUnsafeBytes { encoder.setBytes($0.baseAddress!, length: $0.count, index: slot) }
+                guard !bytes.isEmpty else { continue }
+                bytes.withUnsafeBytes {
+                    if let base = $0.baseAddress { encoder.setBytes(base, length: $0.count, index: slot) }
+                }
             }
         }
     }

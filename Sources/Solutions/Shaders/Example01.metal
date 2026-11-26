@@ -54,6 +54,9 @@ int digitAt(const device uchar* bytes, uint i, uint count, bool spelled, thread 
 [[kernel]] void example01_scan(const device uchar* bytes [[buffer(0)]], const device uint* lineOf [[buffer(1)]],
                                device atomic_uint* first [[buffer(2)]], device atomic_uint* last [[buffer(3)]],
                                constant Example01Params& params [[buffer(4)]], uint i [[thread_position_in_grid]]) {
+    if (i >= params.byteCount) {
+        return;
+    }
     uint length;
     if (digitAt(bytes, i, params.byteCount, params.spelledDigits != 0, length) < 0) {
         return;
@@ -68,6 +71,9 @@ int digitAt(const device uchar* bytes, uint i, uint count, bool spelled, thread 
                                   device atomic_uint* total [[buffer(4)]],
                                   constant Example01Params& params [[buffer(5)]],
                                   uint line [[thread_position_in_grid]]) {
+    if (line >= params.lineCount) {
+        return;
+    }
     uint value = 0;
     if (first[line] != kNone) {
         uint length;
@@ -195,6 +201,11 @@ float glyphX(float c, float length) {
     inst.position = float3(0.0f);
     inst.scale = float3(0.0f);
     inst.color = float4(0.0f);
+
+    if (p.line >= p.lineCount) {
+        out[outIndex] = inst;
+        return;
+    }
 
     const LineInfo cur = lineInfo(p.line, bytes, lineStart, first, last, p);
     const uint lineSlots = (p.queuedLines + 1) * p.maxLineLength;

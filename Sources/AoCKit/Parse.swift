@@ -20,15 +20,16 @@ public enum Parse {
                     negative = signed && previous == UInt8(ascii: "-") && !isDigit(beforePrevious)
                     value = 0
                 }
-                value = value &* 10 &+ Int(byte &- UInt8(ascii: "0"))
+                let digit = Int(byte &- UInt8(ascii: "0"))
+                value = negative ? (value &* 10 &- digit) : (value &* 10 &+ digit)
             } else if inNumber {
-                result.append(negative ? -value : value)
+                result.append(value)
                 inNumber = false
             }
             beforePrevious = previous
             previous = byte
         }
-        if inNumber { result.append(negative ? -value : value) }
+        if inNumber { result.append(value) }
         return result
     }
 
@@ -49,7 +50,7 @@ public enum Parse {
 public extension StringProtocol {
     /// Leading/trailing spaces, tabs and newlines removed.
     func trimmingWhitespace() -> SubSequence {
-        let isSpace: (Character) -> Bool = { $0 == " " || $0 == "\t" || $0 == "\n" }
+        let isSpace: (Character) -> Bool = { $0 == " " || $0 == "\t" || $0 == "\n" || $0 == "\r" }
         guard let start = firstIndex(where: { !isSpace($0) }),
             let end = lastIndex(where: { !isSpace($0) })
         else { return self[endIndex...] }
