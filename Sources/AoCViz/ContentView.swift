@@ -63,7 +63,6 @@ private struct Sidebar: View {
 private struct PuzzleDetail: View {
     @Bindable var model: AppModel
     let type: any Solution.Type
-    @State private var showingPuzzle = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -87,7 +86,7 @@ private struct PuzzleDetail: View {
                 TimelineBar(model: model, playback: model.playback)
             }
         }
-        .sheet(isPresented: $showingPuzzle) {
+        .sheet(isPresented: $model.isShowingPuzzleBrowser) {
             if let url = URL(string: type.id.url) { PuzzleBrowser(url: url, model: model) }
         }
         .navigationTitle("\(type.id.description) — \(type.title)")
@@ -110,9 +109,9 @@ private struct PuzzleDetail: View {
                 Button("Re-download Input", systemImage: "arrow.down.circle") {
                     Task { await model.load(refresh: true) }
                 }
-                .help("Download this puzzle's input from adventofcode.com again (needs AOC_SESSION)")
+                .help("Download this puzzle's input from adventofcode.com again (needs login or AOC_SESSION)")
                 .disabled(model.source(for: type) == .example)
-                Button("Puzzle", systemImage: "safari") { showingPuzzle = true }
+                Button("Puzzle", systemImage: "safari") { model.isShowingPuzzleBrowser = true }
                     .help("Open the puzzle page. Log in there and the app downloads all missing inputs.")
             }
         }
@@ -265,6 +264,11 @@ private struct TimelineBar: View {
 
     /// Space plays/pauses; ←/→ nudge the active slider. Returns true if the key was consumed.
     private func handleKey(_ event: NSEvent) -> Bool {
+        // Don't hijack keys while a sheet (such as the in-app login browser) is open.
+        guard !model.isShowingPuzzleBrowser,
+            event.window?.sheetParent == nil,
+            event.window?.attachedSheet == nil
+        else { return false }
         // Arrow keys carry .numericPad and .function; any other modifier means "not for us".
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             .subtracting([.numericPad, .function])

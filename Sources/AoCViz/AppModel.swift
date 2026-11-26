@@ -37,6 +37,10 @@ final class AppModel {
     private let defaultSource: InputSource
     private(set) var sceneError: String?
     private(set) var hasScene = false
+    /// Whether the in-app puzzle browser sheet is currently open (pauses timeline key capture).
+    var isShowingPuzzleBrowser = false
+    private var loadGeneration: UInt64 = 0
+    private var puzzleLoadGeneration: [PuzzleID: UInt64] = [:]
     var selection: PuzzleID? {
         didSet { if selection != oldValue { Task { await load() } } }
     }
@@ -125,6 +129,10 @@ final class AppModel {
     func load(refresh: Bool = false) async {
         guard let type = selectedType else { return }
         let id = type.id
+        loadGeneration &+= 1
+        let generation = loadGeneration
+        puzzleLoadGeneration[id] = generation
+
         states[id, default: PuzzleState()].isSolving = true
         states[id, default: PuzzleState()].error = nil
         sceneError = nil
@@ -137,7 +145,10 @@ final class AppModel {
                 input = try await store.load(id, refresh: refresh, session: loginSession)
             }
         } catch {
-            states[id, default: PuzzleState()].isSolving = false
+            if puzzleLoadGeneration[id] == generation {
+                states[id, default: PuzzleState()].isSolving = false
+            }
+            guard loadGeneration == generation else { return }
             // A failed re-download leaves the cached input as it was: keep showing it.
             if refresh, hasScene {
                 sceneError = "Re-download failed: \(error). Still showing the cached input."
@@ -153,7 +164,12 @@ final class AppModel {
             clearScene()
             return
         }
-        guard selection == id else { return }
+        guard loadGeneration == generation else {
+            if puzzleLoadGeneration[id] == generation {
+                states[id, default: PuzzleState()].isSolving = false
+            }
+            return
+        }
 
         buildScene(type, input: input)
 
@@ -162,6 +178,7 @@ final class AppModel {
             Result { try Runner.solve(type, input: input, gpu: gpu, stableBelow: .milliseconds(100)) }
                 .mapError(SolveFailure.init)
         }.value
+        guard puzzleLoadGeneration[id] == generation else { return }
         switch result {
         case .success(let report): states[id, default: PuzzleState()].report = report
         case .failure(let error): states[id, default: PuzzleState()].error = error.description
