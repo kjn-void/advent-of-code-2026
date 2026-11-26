@@ -50,9 +50,8 @@ public enum Parse {
 public extension StringProtocol {
     /// Leading/trailing spaces, tabs and newlines removed.
     func trimmingWhitespace() -> SubSequence {
-        let isSpace: (Character) -> Bool = { $0 == " " || $0 == "\t" || $0 == "\n" || $0 == "\r" }
-        guard let start = firstIndex(where: { !isSpace($0) }),
-            let end = lastIndex(where: { !isSpace($0) })
+        guard let start = firstIndex(where: { !$0.isWhitespace }),
+            let end = lastIndex(where: { !$0.isWhitespace })
         else { return self[endIndex...] }
         return self[start...end]
     }

@@ -65,7 +65,7 @@ let package = Package(
 
         .testTarget(
             name: "SolutionsTests",
-            dependencies: ["AoCKit", "Solutions"],
+            dependencies: ["AoCKit", "AoCRender", "AoCShared", "Solutions"],
             swiftSettings: swiftSettings
         ),
     ]

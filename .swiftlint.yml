@@ -71,9 +71,7 @@ opt_in_rules:
   - unowned_variable_capture
   - yoda_condition
 
-analyzer_rules:  # `swiftlint analyze` (needs a compiler log); see scripts/lint.sh
-  - unused_declaration
-  - unused_import
+# Analyzer rules (`swiftlint analyze`) require an xcodebuild compiler log and are not run in CI.
 
 force_try: error
 implicit_return:

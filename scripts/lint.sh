@@ -39,11 +39,16 @@ while IFS= read -r file; do
 done < <(find Sources -name '*.metal')
 
 if ! $fast; then
-    step "Swift build (warnings as errors)"
+    step "Swift build + tests (warnings as errors)"
     # Separate scratch path so the normal debug build cache is not invalidated.
-    swift build --scratch-path .build/lint -Xswiftc -warnings-as-errors 2>&1 \
-        | grep -E 'error|warning|Compiling|Build complete' | grep -v '^\[' || true
-    [[ ${PIPESTATUS[0]} -eq 0 ]] || fail "swift build -warnings-as-errors"
+    mkdir -p .build/lint
+    build_log=.build/lint/build.log
+    if swift build --build-tests --scratch-path .build/lint -Xswiftc -warnings-as-errors >"$build_log" 2>&1; then
+        grep -E 'Compiling|Build complete' "$build_log" | grep -v '^\[' || true
+    else
+        cat "$build_log" >&2
+        fail "swift build --build-tests -warnings-as-errors"
+    fi
 fi
 
 echo

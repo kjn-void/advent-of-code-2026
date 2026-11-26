@@ -29,7 +29,7 @@ Install [Xcode](https://developer.apple.com/xcode/), then select it and install 
 ```bash
 sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
 sudo xcodebuild -runFirstLaunch
-xcodebuild -downloadComponent metalToolchain
+xcodebuild -downloadComponent MetalToolchain
 swift --version
 xcrun -sdk macosx metal --version
 ```

@@ -29,6 +29,7 @@ struct Example01Tests {
         Example("single digit counts twice", part1: "77", part2: "77", "treb7uchet"),
         Example("overlapping words", part2: "82", "eightwo"),
         Example("no trailing newline", part1: "11", part2: "11", "1"),
+        Example("empty input", part1: "0", part2: "0", ""),
     ]
 
     @Test(arguments: examples)
