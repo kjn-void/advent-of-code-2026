@@ -19,11 +19,23 @@ public enum Registry {
         public var id: PuzzleID { type.id }
     }
 
-    /// Looks up a solution by CLI name: "3", "03", "day3", "e1", "example1".
+    /// Looks up a solution by CLI name: "3", "03", "day3", "day03", "e1", "example1". Anything else
+    /// (e.g. "part2", "x3") is nil rather than quietly meaning some day.
     public static func solution(named name: String) -> (any Solution.Type)? {
         let lower = name.lowercased()
-        let isExample = lower.hasPrefix("e")
-        guard let number = Int(lower.drop { !$0.isNumber }) else { return nil }
-        return all.first { $0.id.number == number && ($0.id.kind == .example) == isExample }
+        let (kind, digits): (PuzzleID.Kind, Substring) =
+            if lower.hasPrefix("example") {
+                (.example, lower.dropFirst("example".count))
+            } else if lower.hasPrefix("e") {
+                (.example, lower.dropFirst())
+            } else if lower.hasPrefix("day") {
+                (.day, lower.dropFirst("day".count))
+            } else {
+                (.day, Substring(lower))
+            }
+        guard !digits.isEmpty, digits.allSatisfy({ ("0"..."9").contains($0) }), let number = Int(digits) else {
+            return nil
+        }
+        return all.first { $0.id.number == number && $0.id.kind == kind }
     }
 }

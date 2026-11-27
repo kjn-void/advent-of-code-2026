@@ -41,7 +41,11 @@ struct FrameworkTests {
     @Test func registryResolvesCLINames() {
         #expect(Registry.solution(named: "e1")?.id == Example01.id)
         #expect(Registry.solution(named: "example1")?.id == Example01.id)
+        #expect(Registry.solution(named: "E01")?.id == Example01.id)
         #expect(Registry.solution(named: "1") == nil || Registry.solution(named: "1")?.id.kind == .day)
+        for junk in ["part2", "x1", "p2", "e", "day", "", "1x", "e-1", "e١"] {
+            #expect(Registry.solution(named: junk) == nil, "'\(junk)'")
+        }
     }
 
     @Test func sessionCookieMustComeFromAdventOfCode() {
