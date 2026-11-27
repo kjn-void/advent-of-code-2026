@@ -17,7 +17,7 @@ import simd
 /// * Brent's cycle detection finds the loop without any per-thread memory;
 /// * each thread starts where the guard first reaches its candidate, since nothing before that
 ///   point can change.
-public final class Example02: Solution {
+public final class Example02: Solution, Sendable {
     public static let id = PuzzleID.example(2, year: 2024, day: 6)
     public static let title = "Guard Gallivant"
     public static let exampleInput: String? = """
@@ -185,7 +185,7 @@ public final class Example02: Solution {
 // MARK: - Visualization
 
 extension Example02: Visualizable {
-    @MainActor public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
+    public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
         try Example02Scene(solution: Example02(input: input, gpu: gpu))
     }
 }
@@ -236,7 +236,7 @@ final class Example02Scene: VisualizationScene {
     private let scoreOffset: Float
     private let scoreVoxel: Float
 
-    init(solution: Example02) throws {
+    nonisolated init(solution: Example02) throws {
         self.solution = solution
         let gpu = solution.gpu
         walk = try solution.walk()

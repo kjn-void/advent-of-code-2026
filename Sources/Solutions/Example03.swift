@@ -15,7 +15,7 @@ import simd
 /// Part 2 detects an exact cycle using `(rockType, jetIndex, reachableContour)` where the contour
 /// is the top of the tower down to where open air flood-filled from above is sealed off (see
 /// `PyroclasticSim.CycleDetector` for why that stays exact when the tower never seals).
-public final class Example03: Solution {
+public final class Example03: Solution, Sendable {
     public static let id = PuzzleID.example(3, year: 2022, day: 17)
     public static let title = "Pyroclastic Flow"
     public static let exampleInput: String? = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>\n"
@@ -341,7 +341,7 @@ enum PyroclasticSim {
 // MARK: - Visualization
 
 extension Example03: Visualizable {
-    @MainActor public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
+    public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
         try Example03Scene(solution: Example03(input: input, gpu: gpu))
     }
 }
@@ -367,7 +367,7 @@ final class Example03Scene: VisualizationScene {
     private let part2Remainder: Int
     private let part2TotalSteps: Int
 
-    init(solution: Example03) throws {
+    nonisolated init(solution: Example03) throws {
         let gpu = solution.gpu
         let rec = try PyroclasticSim.record(
             jets: solution.jets,

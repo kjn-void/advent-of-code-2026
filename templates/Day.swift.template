@@ -7,7 +7,7 @@ import Metal
 ///
 /// Template skeleton: parses every integer of the input into a flat GPU buffer and sums them on
 /// the GPU. Replace parsing, kernels and visualization with the real thing.
-public final class Day__NN__: Solution {
+public final class Day__NN__: Solution, Sendable {
     public static let id = PuzzleID.day(__N__)
     public static let title = "__TITLE__"
 
@@ -39,7 +39,7 @@ public final class Day__NN__: Solution {
 // MARK: - Visualization
 
 extension Day__NN__: Visualizable {
-    @MainActor public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
+    public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
         try Day__NN__Scene(solution: Day__NN__(input: input, gpu: gpu))
     }
 }
@@ -58,7 +58,7 @@ final class Day__NN__Scene: VisualizationScene {
     private let columns: Int
     private let maxValue: UInt32
 
-    init(solution: Day__NN__) throws {
+    nonisolated init(solution: Day__NN__) throws {
         self.solution = solution
         pipeline = try solution.gpu.kernel("day__NN___instances")
         instances = solution.gpu.buffer(count: max(solution.values.count, 1), of: AoCInstance.self)

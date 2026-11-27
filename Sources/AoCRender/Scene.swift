@@ -9,13 +9,20 @@ import simd
 ///
 /// ```swift
 /// extension Day03: Visualizable {
-///     @MainActor static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
+///     static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
 ///         try Day03Scene(solution: Day03(input: input, gpu: gpu))
 ///     }
 /// }
+///
+/// @MainActor final class Day03Scene: VisualizationScene {
+///     nonisolated init(solution: Day03) throws { ... }
+/// }
 /// ```
 public protocol Visualizable: Solution {
-    @MainActor static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene
+    /// Builds the scene, including whatever it precomputes (often a full simulation of the puzzle).
+    /// The visualizer calls this off the main actor so the window stays responsive meanwhile: give
+    /// the scene a `nonisolated init` that only sets up data and buffers.
+    static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene
 }
 
 /// 2.5D/3D illustration of a solution, drawn as instanced boxes (`AoCInstance`).
@@ -28,7 +35,7 @@ public protocol Visualizable: Solution {
 /// Time is a continuous timeline: `step` (an integer in `0..<stepCount`, e.g. "line 12") plus
 /// `progress` in [0, 1) within that step, so animations stay deterministic while scrubbing.
 @MainActor
-public protocol VisualizationScene: AnyObject {
+public protocol VisualizationScene: AnyObject, Sendable {
     /// Boxes to draw. Only the first `instanceCount` are rendered.
     var instances: GPUBuffer<AoCInstance> { get }
     var instanceCount: Int { get }

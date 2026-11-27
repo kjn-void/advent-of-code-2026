@@ -171,7 +171,13 @@ final class AppModel {
             return
         }
 
-        buildScene(type, input: input)
+        await buildScene(type, input: input)
+        guard loadGeneration == generation else {
+            if puzzleLoadGeneration[id] == generation {
+                states[id, default: PuzzleState()].isSolving = false
+            }
+            return
+        }
 
         let gpu = gpu
         let result = await Task.detached { () -> Result<SolveReport, SolveFailure> in
@@ -186,15 +192,23 @@ final class AppModel {
         states[id, default: PuzzleState()].isSolving = false
     }
 
-    private func buildScene(_ type: any Solution.Type, input: Input) {
+    /// Builds the scene off the main actor (it may simulate the whole puzzle) and shows it, unless
+    /// another load started meanwhile.
+    private func buildScene(_ type: any Solution.Type, input: Input) async {
         guard let renderer else { return }
         guard let visual = type as? any Visualizable.Type else {
             sceneError = "\(type.id) has no visualization yet (conform it to Visualizable)."
             clearScene()
             return
         }
+        let generation = loadGeneration
+        let gpu = gpu
+        let built = await Task.detached { () -> Result<any VisualizationScene, SolveFailure> in
+            Result { try visual.makeScene(input: input, gpu: gpu) }.mapError(SolveFailure.init)
+        }.value
+        guard loadGeneration == generation else { return }
         do {
-            let scene = try visual.makeScene(input: input, gpu: gpu)
+            let scene = try built.get()
             renderer.scene = scene
             renderer.onError = { [weak self] error in self?.sceneError = "\(error)" }
             renderer.playback.reset(for: scene)

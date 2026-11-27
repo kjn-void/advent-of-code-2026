@@ -9,7 +9,7 @@ import Metal
 /// Each line's calibration value is its first and last digit glued together (part 2 also
 /// counts spelled-out digits, which may overlap). The GPU looks at every byte in parallel and
 /// keeps the smallest/largest digit offset per line with atomic min/max.
-public final class Example01: Solution {
+public final class Example01: Solution, Sendable {
     public static let id = PuzzleID.example(1, year: 2023, day: 1)
     public static let title = "Trebuchet?!"
     /// The part 2 example (part 1's has no spelled digits, so this one shows both parts).
@@ -94,7 +94,7 @@ public final class Example01: Solution {
 // MARK: - Visualization
 
 extension Example01: Visualizable {
-    @MainActor public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
+    public static func makeScene(input: Input, gpu: GPU) throws -> any VisualizationScene {
         try Example01Scene(solution: Example01(input: input, gpu: gpu))
     }
 }
@@ -120,7 +120,7 @@ final class Example01Scene: VisualizationScene {
     private let queuedLines = 2
     private let slots: Int
 
-    init(solution: Example01) throws {
+    nonisolated init(solution: Example01) throws {
         self.solution = solution
         parts = [try solution.evaluate(spelledDigits: false), try solution.evaluate(spelledDigits: true)]
         prefix = parts.map { part in part.lineValue.array.reduce(into: [0]) { $0.append($0.last! + UInt64($1)) } }
