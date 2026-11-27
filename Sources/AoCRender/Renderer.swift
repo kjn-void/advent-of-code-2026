@@ -123,7 +123,9 @@ public final class Renderer: NSObject, MTKViewDelegate {
             descriptor.sampleCount = samples
             descriptor.usage = usage
             descriptor.storageMode = samples > 1 || format == .depth32Float ? .private : .shared
-            guard let texture = gpu.device.makeTexture(descriptor: descriptor) else { throw GPUError.noEncoder }
+            guard let texture = gpu.device.makeTexture(descriptor: descriptor) else {
+                throw RenderError.textureAllocation(width: width, height: height)
+            }
             return texture
         }
         let msaa = try texture(.bgra8Unorm_srgb, samples: Self.sampleCount, usage: .renderTarget)
@@ -156,7 +158,7 @@ public final class Renderer: NSObject, MTKViewDelegate {
                 width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
                 space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: info, provider: provider,
                 decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-        else { throw GPUError.noEncoder }
+        else { throw RenderError.imageCreation(width: width, height: height) }
         return image
     }
 
@@ -209,5 +211,17 @@ public final class Renderer: NSObject, MTKViewDelegate {
         encoder.setRenderPipelineState(translucentPipeline)
         encoder.setDepthStencilState(translucentDepthState)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 36, instanceCount: count)
+    }
+}
+
+public enum RenderError: Error, CustomStringConvertible {
+    case textureAllocation(width: Int, height: Int)
+    case imageCreation(width: Int, height: Int)
+
+    public var description: String {
+        switch self {
+        case .textureAllocation(let width, let height): "could not allocate a \(width)x\(height) render target"
+        case .imageCreation(let width, let height): "could not turn the \(width)x\(height) frame into an image"
+        }
     }
 }

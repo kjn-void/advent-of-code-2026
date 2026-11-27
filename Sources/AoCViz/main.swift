@@ -65,37 +65,37 @@ func snapshot(_ arguments: [String]) async throws {
         switch argument {
         case "--at":
             guard let raw = iterator.next(), let parsed = Double(raw) else {
-                throw SolutionError.malformedInput("--at requires a number")
+                throw VizError.usage("--at requires a number")
             }
             position = parsed
         case "--part":
             guard let raw = iterator.next(), let parsed = Int(raw), [1, 2].contains(parsed) else {
-                throw SolutionError.malformedInput("--part must be 1 or 2")
+                throw VizError.usage("--part must be 1 or 2")
             }
             part = parsed
         case "--out":
-            guard let raw = iterator.next() else { throw SolutionError.malformedInput("--out requires a path") }
+            guard let raw = iterator.next() else { throw VizError.usage("--out requires a path") }
             out = raw
         case "--input":
-            guard let raw = iterator.next() else { throw SolutionError.malformedInput("--input requires a path") }
+            guard let raw = iterator.next() else { throw VizError.usage("--input requires a path") }
             inputFile = raw
         case "--example": example = true
         case "--size":
             let raw = iterator.next() ?? ""
             let parts = raw.split(separator: "x").compactMap { Int($0) }
             guard parts.count == 2, parts[0] > 0, parts[1] > 0 else {
-                throw SolutionError.malformedInput("--size must be WxH with positive integers")
+                throw VizError.usage("--size must be WxH with positive integers")
             }
             size = (parts[0], parts[1])
         default: puzzle = argument
         }
     }
     guard let name = puzzle, let type = Registry.solution(named: name) else {
-        throw SolutionError.malformedInput(
+        throw VizError.usage(
             "usage: aoc2026-viz --snapshot <puzzle> [--at N] [--part N] [--example] [--out f.png]")
     }
     guard let visual = type as? any Visualizable.Type else {
-        throw SolutionError.malformedInput("\(type.id) is not Visualizable")
+        throw VizError.usage("\(type.id) is not Visualizable")
     }
 
     let gpu = GPU.shared
@@ -103,7 +103,7 @@ func snapshot(_ arguments: [String]) async throws {
     let input: Input
     if example {
         guard let text = type.exampleInput else {
-            throw SolutionError.malformedInput("\(type.id) has no example input")
+            throw VizError.usage("\(type.id) has no example input")
         }
         input = Input(text)
     } else if let inputFile {
@@ -123,14 +123,29 @@ func snapshot(_ arguments: [String]) async throws {
     print("\(out): \(scene.caption(step: renderer.playback.step, part: part))")
 }
 
+/// Errors from the command-line modes (`--snapshot`, `--icon`).
+enum VizError: Error, CustomStringConvertible {
+    case usage(String)
+    case cannotWrite(String)
+    case iconRendering
+
+    var description: String {
+        switch self {
+        case .usage(let message): message
+        case .cannotWrite(let path): "cannot write \(path)"
+        case .iconRendering: "rendering the icon failed"
+        }
+    }
+}
+
 /// Writes `cgImage` as a PNG to `path`.
 func writePNG(_ cgImage: CGImage, to path: String) throws {
     let url = URL(filePath: path) as CFURL
     guard let destination = CGImageDestinationCreateWithURL(url, UTType.png.identifier as CFString, 1, nil) else {
-        throw SolutionError.malformedInput("cannot write \(path)")
+        throw VizError.cannotWrite(path)
     }
     CGImageDestinationAddImage(destination, cgImage, nil)
-    guard CGImageDestinationFinalize(destination) else { throw SolutionError.malformedInput("cannot write \(path)") }
+    guard CGImageDestinationFinalize(destination) else { throw VizError.cannotWrite(path) }
 }
 
 @MainActor
@@ -140,11 +155,15 @@ func exportIcon(_ arguments: [String]) throws {
     var iterator = arguments.makeIterator()
     while let argument = iterator.next() {
         switch argument {
-        case "--size": size = (iterator.next()).flatMap(Double.init).map { CGFloat($0) } ?? size
+        case "--size":
+            guard let raw = iterator.next(), let parsed = Double(raw), parsed > 0 else {
+                throw VizError.usage("--size must be a positive number of pixels")
+            }
+            size = CGFloat(parsed)
         default: out = argument
         }
     }
-    guard let image = AppIcon.render(size: size) else { throw SolutionError.malformedInput("icon rendering failed") }
+    guard let image = AppIcon.render(size: size) else { throw VizError.iconRendering }
     try writePNG(image, to: out)
     print("\(out): \(image.width)x\(image.height)")
 }
