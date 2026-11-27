@@ -19,7 +19,8 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      # Pinned to a commit: a tag can be moved to different code.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5.1.0
 
       # swift-format output and compiler warnings change between Xcode releases, so use the newest
       # Xcode on the image (closest to what the code is developed with).
@@ -39,11 +40,26 @@ jobs:
           xcrun -f metal 2>/dev/null || xcodebuild -downloadComponent MetalToolchain
           xcrun metal --version
 
+      # Pinned, so a new release cannot turn CI red on a commit that changed nothing. Keep them in
+      # step with the versions used locally (`swiftlint version`, `clang-format --version`); the
+      # SwiftLint checksum is the release asset's sha256 from GitHub.
       - name: Install SwiftLint and clang-format
+        env:
+          SWIFTLINT_VERSION: 0.65.1
+          SWIFTLINT_SHA256: c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0
+          CLANG_FORMAT_VERSION: 23.1.5
         run: |
-          brew install swiftlint clang-format
-          swiftlint version
-          clang-format --version
+          zip="$RUNNER_TEMP/swiftlint.zip"
+          curl -fsSL -o "$zip" \
+            "https://github.com/realm/SwiftLint/releases/download/$SWIFTLINT_VERSION/portable_swiftlint.zip"
+          echo "$SWIFTLINT_SHA256  $zip" | shasum -a 256 -c -
+          unzip -q "$zip" -d "$RUNNER_TEMP/swiftlint"
+          echo "$RUNNER_TEMP/swiftlint" >> "$GITHUB_PATH"
+          pipx install "clang-format==$CLANG_FORMAT_VERSION"
+          bin=$(pipx environment --value PIPX_BIN_DIR)
+          echo "$bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/swiftlint/swiftlint" version
+          "$bin/clang-format" --version
 
       # Ask Metal, not system_profiler: the runner's paravirtual GPU is invisible to the latter.
       - name: GPU

@@ -344,7 +344,8 @@ The normal build also compiles shaders with `-Wall -Wextra`, so Metal warnings s
 
 Tools: `swift-format` comes with Xcode, and `metal` comes from the Metal Toolchain installed
 above. Get `clang-format` and SwiftLint from Homebrew (`brew install clang-format swiftlint`).
-`lint.sh` fails if SwiftLint is missing, rather than quietly skipping it.
+`lint.sh` fails if SwiftLint is missing, rather than quietly skipping it. CI pins both tools (see
+`.github/workflows/ci.yml`); when you upgrade them locally, bump the pinned versions there too.
 
 ## Notes
 
