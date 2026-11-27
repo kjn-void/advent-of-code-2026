@@ -12,7 +12,7 @@
 #define EXAMPLE03_WINDOW_ROWS 42
 /// Active falling rock occupies at most 5 cells (+ and J have 5 cells).
 #define EXAMPLE03_ROCK_CELLS 5
-/// Wall structure boxes: floor + lava strip + 2 translucent walls + 4 corner pillars + 2 vents.
+/// Wall structure boxes: floor + lava strip + 3 translucent walls + 4 corner rails + 1 jet nozzle.
 #define EXAMPLE03_FRAME_SLOTS 10
 /// Animated hot-gas jet streaks shooting across the chamber.
 #define EXAMPLE03_JET_STREAKS 12
