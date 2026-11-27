@@ -38,6 +38,14 @@ public struct AoCClient: Sendable {
         return components.date ?? .distantFuture
     }
 
+    /// Whether a cookie for `domain` belongs to adventofcode.com (or a subdomain). A bare
+    /// `hasSuffix("adventofcode.com")` would also accept one set by e.g. `notadventofcode.com`.
+    public static func isAoCCookieDomain(_ domain: String) -> Bool {
+        // A leading dot (".adventofcode.com") means "this domain and its subdomains".
+        let host = (domain.hasPrefix(".") ? domain.dropFirst() : Substring(domain)).lowercased()
+        return host == "adventofcode.com" || host.hasSuffix(".adventofcode.com")
+    }
+
     public func fetchInput(year: Int = Self.year, day: Int) async throws -> String {
         let unlock = Self.unlockDate(day: day, year: year)
         guard Date.now >= unlock else { throw FetchError.notUnlocked(day: day, unlock: unlock) }

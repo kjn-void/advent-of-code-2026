@@ -1,3 +1,4 @@
+import AoCKit
 import SwiftUI
 import WebKit
 
@@ -20,7 +21,7 @@ final class AoCLogin: NSObject, WKHTTPCookieStoreObserver {
     nonisolated func cookiesDidChange(in cookieStore: WKHTTPCookieStore) {
         Task { @MainActor in
             let cookies = await cookieStore.allCookies()
-            let session = cookies.first { $0.name == "session" && $0.domain.hasSuffix("adventofcode.com") }
+            let session = cookies.first { $0.name == "session" && AoCClient.isAoCCookieDomain($0.domain) }
             if let value = session?.value, !value.isEmpty { self.onSession?(value) }
         }
     }

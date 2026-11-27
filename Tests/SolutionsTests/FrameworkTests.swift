@@ -44,6 +44,15 @@ struct FrameworkTests {
         #expect(Registry.solution(named: "1") == nil || Registry.solution(named: "1")?.id.kind == .day)
     }
 
+    @Test func sessionCookieMustComeFromAdventOfCode() {
+        for domain in ["adventofcode.com", ".adventofcode.com", "www.adventofcode.com", "AdventOfCode.com"] {
+            #expect(AoCClient.isAoCCookieDomain(domain), "\(domain)")
+        }
+        for domain in ["notadventofcode.com", ".evil-adventofcode.com", "adventofcode.com.evil.io", ""] {
+            #expect(!AoCClient.isAoCCookieDomain(domain), "\(domain)")
+        }
+    }
+
     @Test func registryIDsAreUnique() {
         let ids = Registry.all.map { $0.id }
         #expect(Set(ids).count == ids.count)
