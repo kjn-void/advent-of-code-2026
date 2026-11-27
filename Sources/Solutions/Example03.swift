@@ -13,7 +13,8 @@ import simd
 /// Each chamber row fits in 7 bits (`UInt8`) and all four rows of a rock pack into one `UInt32`, so
 /// wall checks, horizontal pushes, and rock-vs-tower collision tests are single bitwise operations.
 /// Part 2 detects an exact cycle using `(rockType, jetIndex, reachableContour)` where the contour
-/// flood-fills open air downward from the top until the chamber is completely sealed.
+/// is the top of the tower down to where open air flood-filled from above is sealed off (see
+/// `PyroclasticSim.CycleDetector` for why that stays exact when the tower never seals).
 public final class Example03: Solution {
     public static let id = PuzzleID.example(3, year: 2022, day: 17)
     public static let title = "Pyroclastic Flow"
@@ -45,11 +46,11 @@ public final class Example03: Solution {
     }
 
     public func part1() throws -> String {
-        "\(PyroclasticSim.height(after: Self.part1Rocks, jets: jets))"
+        "\(try PyroclasticSim.height(after: Self.part1Rocks, jets: jets))"
     }
 
     public func part2() throws -> String {
-        "\(PyroclasticSim.height(after: Self.part2Rocks, jets: jets))"
+        "\(try PyroclasticSim.height(after: Self.part2Rocks, jets: jets))"
     }
 }
 
@@ -78,6 +79,49 @@ enum PyroclasticSim {
         let contour: [UInt8]
     }
 
+    /// Most chamber rows a cycle key holds. Real inputs seal the tower far above this; patterns that
+    /// never seal it (every jet blowing one way leaves a column open down to the floor) are cut here.
+    static let contourRows = 128
+    /// Rocks to simulate before giving up on finding a cycle. The key space is finite, so a cycle
+    /// always exists, but a pathological jet pattern could take unreasonably long to reach it.
+    static let maxRocksWithoutCycle = 200_000
+
+    /// Finds the first exact repeat of the chamber state.
+    ///
+    /// The key is (next rock, jet index, top rows down to where the open air is sealed off, at most
+    /// `contourRows` of them). A repeat only counts if no rock in between inspected a row below the
+    /// key's rows. Then the next period's rocks meet exactly the same rows and repeat it move for move,
+    /// and by induction so does every period after it. That keeps truncated keys exact, not just
+    /// likely.
+    struct CycleDetector {
+        /// Tower height after each rock; `heights[0] == 0`.
+        private(set) var heights = [0]
+        /// Lowest chamber row each rock inspected (-1: it reached the floor).
+        private var lowest: [Int] = []
+        private var seen: [CycleKey: Int] = [:]
+
+        /// Call after every rock settles. Returns `(start, length)`: the state after rock `start`
+        /// repeats after rock `start + length`, forever.
+        mutating func observe(
+            rocks: Int, jetIndex: Int, chamber: [UInt8], lowestRow: Int
+        ) throws -> (start: Int, length: Int)? {
+            heights.append(chamber.count)
+            lowest.append(lowestRow)
+            let key = CycleKey(
+                rockType: UInt8(rocks % shapes.count), jetIndex: UInt32(jetIndex),
+                contour: reachableContour(chamber))
+            if let previous = seen[key] {
+                let keyBottom = heights[previous] - key.contour.count
+                if (lowest[previous..<rocks].min() ?? 0) >= keyBottom { return (previous, rocks - previous) }
+            }
+            seen[key] = rocks
+            guard rocks < maxRocksWithoutCycle else {
+                throw SolutionError.malformedInput("no repeating tower state within \(maxRocksWithoutCycle) rocks")
+            }
+            return nil
+        }
+    }
+
     struct CycleInfo {
         let cycleStart: Int
         let cycleLength: Int
@@ -95,14 +139,12 @@ enum PyroclasticSim {
 
     /// Exact tower height after `target` rocks, using exact contour cycle detection once a state
     /// repeats.
-    static func height(after target: UInt64, jets: [Int8]) -> UInt64 {
+    static func height(after target: UInt64, jets: [Int8]) throws -> UInt64 {
         guard target > 0 else { return 0 }
         let jetCount = jets.count
         var chamber: [UInt8] = []
         chamber.reserveCapacity(4096)
-        var heights: [Int] = [0]
-        heights.reserveCapacity(4096)
-        var seen: [CycleKey: Int] = [:]
+        var detector = CycleDetector()
         var jetIndex = 0
         var rockCount = 0
 
@@ -137,34 +179,29 @@ enum PyroclasticSim {
 
             settle(mask: mask, shapeHeight: shape.height, at: y, into: &chamber)
             rockCount += 1
-            heights.append(chamber.count)
 
-            let key = CycleKey(
-                rockType: UInt8(rockCount % shapes.count),
-                jetIndex: UInt32(jetIndex),
-                contour: reachableContour(chamber))
-            if let previous = seen[key] {
-                let cycleLength = UInt64(rockCount - previous)
-                let cycleHeight = UInt64(chamber.count - heights[previous])
-                let remaining = target - UInt64(previous)
-                let fullCycles = remaining / cycleLength
-                let remainder = Int(remaining % cycleLength)
-                return UInt64(heights[previous + remainder]) + fullCycles * cycleHeight
+            if let cycle = try detector.observe(
+                rocks: rockCount, jetIndex: jetIndex, chamber: chamber, lowestRow: y - 1)
+            {
+                let heights = detector.heights
+                let cycleHeight = UInt64(chamber.count - heights[cycle.start])
+                let remaining = target - UInt64(cycle.start)
+                let fullCycles = remaining / UInt64(cycle.length)
+                let remainder = Int(remaining % UInt64(cycle.length))
+                return UInt64(heights[cycle.start + remainder]) + fullCycles * cycleHeight
             }
-            seen[key] = rockCount
         }
         return UInt64(chamber.count)
     }
 
     /// Simulates enough rocks to record both Part 1 (`2022` rocks) and Part 2's visualization
     /// (prefix + Cycle 1 + Cycle 2 + remainder rocks).
-    static func record(jets: [Int8], part1Rocks: Int, part2Target: UInt64) -> Recording {
+    static func record(jets: [Int8], part1Rocks: Int, part2Target: UInt64) throws -> Recording {
         var chamber: [UInt8] = []
         var cells: [Example03Cell] = []
         var rocks: [Example03RockInfo] = []
         var fallSteps: [Example03FallStep] = []
-        var heights: [Int] = [0]
-        var seen: [CycleKey: Int] = [:]
+        var detector = CycleDetector()
         var detectedCycle: CycleInfo?
         var targetToRecord = part1Rocks
         var jetIndex = 0
@@ -189,28 +226,21 @@ enum PyroclasticSim {
                     shape: UInt32(shapeIndex), finalX: UInt32(drop.x), finalY: UInt32(drop.y),
                     towerHeight: UInt32(chamber.count),
                     fallOffset: UInt32(drop.fallOffset), fallCount: UInt32(fallSteps.count - drop.fallOffset)))
-            heights.append(chamber.count)
 
-            if detectedCycle == nil {
-                let key = CycleKey(
-                    rockType: UInt8(rocks.count % shapes.count),
-                    jetIndex: UInt32(jetIndex),
-                    contour: reachableContour(chamber))
-                if let previous = seen[key] {
-                    let length = rocks.count - previous
-                    let cycleHeight = UInt64(chamber.count - heights[previous])
-                    let cycle = CycleInfo(cycleStart: previous, cycleLength: length, cycleHeight: cycleHeight)
-                    detectedCycle = cycle
-                    let remaining = part2Target - UInt64(previous)
-                    let remainder = Int(remaining % UInt64(length))
-                    targetToRecord = max(part1Rocks, previous + 2 * length + remainder)
-                } else {
-                    seen[key] = rocks.count
-                }
+            if detectedCycle == nil,
+                let found = try detector.observe(
+                    rocks: rocks.count, jetIndex: jetIndex, chamber: chamber, lowestRow: drop.y - 1)
+            {
+                let cycleHeight = UInt64(chamber.count - detector.heights[found.start])
+                detectedCycle = CycleInfo(cycleStart: found.start, cycleLength: found.length, cycleHeight: cycleHeight)
+                let remainder = Int((part2Target - UInt64(found.start)) % UInt64(found.length))
+                targetToRecord = max(part1Rocks, found.start + 2 * found.length + remainder)
             }
         }
 
-        let cycle = detectedCycle!
+        guard let cycle = detectedCycle else { throw SolutionError.malformedInput("no repeating tower state") }
+        // Tower height after each recorded rock (the detector stops tracking once it found the cycle).
+        let heights = [0] + rocks.map { Int($0.towerHeight) }
         let remaining = part2Target - UInt64(cycle.cycleStart)
         let fullCycles = remaining / UInt64(cycle.cycleLength)
         let remainder = Int(remaining % UInt64(cycle.cycleLength))
@@ -286,8 +316,9 @@ enum PyroclasticSim {
         }
     }
 
-    /// Flood-fills open air downwards from above the tower until every downward path is sealed.
-    /// The returned rows form the exact equivalence class of the chamber state.
+    /// Top rows of the tower, down to the row where open air flood-filled from above (down and
+    /// sideways, the only ways a rock moves) is sealed off, or `contourRows` rows if it never is.
+    /// `CycleDetector` checks that no rock looked below them, which keeps the cycle exact.
     private static func reachableContour(_ chamber: [UInt8]) -> [UInt8] {
         var contour: [UInt8] = []
         var air: UInt8 = 0x7F
@@ -301,7 +332,7 @@ enum PyroclasticSim {
                 if expanded == air { break }
                 air = expanded
             }
-            if air == 0 { break }
+            if air == 0 || contour.count == contourRows { break }
         }
         return contour
     }
@@ -338,7 +369,7 @@ final class Example03Scene: VisualizationScene {
 
     init(solution: Example03) throws {
         let gpu = solution.gpu
-        let rec = PyroclasticSim.record(
+        let rec = try PyroclasticSim.record(
             jets: solution.jets,
             part1Rocks: Int(Example03.part1Rocks),
             part2Target: Example03.part2Rocks)

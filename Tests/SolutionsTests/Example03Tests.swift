@@ -27,7 +27,7 @@ struct Example03Tests {
     @Test func cycleDetectionMatchesBruteForceReference() throws {
         let exampleJets = try Example03(input: Input(try #require(Example03.exampleInput)), gpu: .shared).jets
         for rocks in [1, 10, 50, 200, 2022, 4000] {
-            let fast = PyroclasticSim.height(after: UInt64(rocks), jets: exampleJets)
+            let fast = try PyroclasticSim.height(after: UInt64(rocks), jets: exampleJets)
             let brute = Self.bruteForceHeight(after: rocks, jets: exampleJets)
             #expect(fast == UInt64(brute), "rock count \(rocks)")
         }
@@ -37,22 +37,37 @@ struct Example03Tests {
             let len = Int(random.next() % 45) + 7
             let jets: [Int8] = (0..<len).map { _ in random.next().isMultiple(of: 2) ? -1 : 1 }
             let target = 1500
-            let fast = PyroclasticSim.height(after: UInt64(target), jets: jets)
+            let fast = try PyroclasticSim.height(after: UInt64(target), jets: jets)
             let brute = Self.bruteForceHeight(after: target, jets: jets)
             #expect(fast == UInt64(brute), "random jet pattern of length \(len)")
         }
     }
 
+    /// One-sided jet patterns never seal the tower (a column stays open down to the floor), so the
+    /// cycle key is cut at `contourRows`. Part 2 used to run forever on these.
+    @Test(.timeLimit(.minutes(1)), arguments: ["<", ">", "<<<<<<>", ">>>>><>>>>"])
+    func unsealedTowersStillFindExactCycles(pattern: String) throws {
+        let solution = try Example03(input: Input(pattern), gpu: .shared)
+        for rocks in [2022, 3001, 4999] {
+            let fast = try PyroclasticSim.height(after: UInt64(rocks), jets: solution.jets)
+            #expect(fast == UInt64(Self.bruteForceHeight(after: rocks, jets: solution.jets)), "\(rocks) rocks")
+        }
+        let recording = try PyroclasticSim.record(
+            jets: solution.jets, part1Rocks: 2022, part2Target: Example03.part2Rocks)
+        #expect(try solution.part2() == "\(recording.part2Height)")
+    }
+
+    /// Part 1 by brute force, and Part 2's cycle extrapolation against brute force at rock counts
+    /// several cycles past where the cycle is detected (10^12 itself is out of reach).
     @Test(.enabled(if: hasRealInput(Example03.id), "input/2022/day17.txt not downloaded"))
-    func matchesBruteForcePart1OnRealInput() throws {
+    func matchesBruteForceOnRealInput() throws {
         let input = try #require(realInput(Example03.id))
         let solution = try Example03(input: input, gpu: .shared)
-        let brute = Self.bruteForceHeight(after: 2022, jets: solution.jets)
-        #expect(try solution.part1() == "\(brute)")
-        // Ensure Part 2 agrees with the recording's cycle calculation.
-        let rec = PyroclasticSim.record(
-            jets: solution.jets, part1Rocks: 2022, part2Target: Example03.part2Rocks)
-        #expect(try solution.part2() == "\(rec.part2Height)")
+        #expect(try solution.part1() == "\(Self.bruteForceHeight(after: 2022, jets: solution.jets))")
+        for rocks in [7_919, 12_345, 20_000] {
+            let fast = try PyroclasticSim.height(after: UInt64(rocks), jets: solution.jets)
+            #expect(fast == UInt64(Self.bruteForceHeight(after: rocks, jets: solution.jets)), "\(rocks) rocks")
+        }
     }
 
     /// Plain 2D array simulation without bitboards or cycle skipping, as an independent check.
