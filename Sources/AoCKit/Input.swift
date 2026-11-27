@@ -7,7 +7,10 @@ public struct Input: Sendable {
     public let text: String
 
     public init(_ text: String) {
-        self.text = text.contains("\r") ? text.replacing("\r", with: "") : text
+        // Work on Unicode scalars: Swift compares Characters, and "\r\n" is a single Character, so
+        // `text.contains("\r")` is false for CRLF text and `replacing("\r", ...)` removes nothing.
+        let scalars = text.unicodeScalars
+        self.text = scalars.contains("\r") ? String(scalars.filter { $0 != "\r" }) : text
     }
 
     /// UTF-8 bytes of the input. AoC input is ASCII, so byte offsets equal character offsets.

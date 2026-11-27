@@ -22,6 +22,15 @@ struct FrameworkTests {
         #expect(input.paragraphs == [["a", "b"], ["c"]])
     }
 
+    @Test func windowsLineEndingsAreNormalised() throws {
+        let input = Input("ab\r\ncd\r\n\r\nef\r\n")
+        #expect(input.text == "ab\ncd\n\nef\n")
+        #expect(input.lines == ["ab", "cd", "", "ef"])
+        #expect(input.paragraphs == [["ab", "cd"], ["ef"]])
+        #expect(try Input("ab\r\ncd\r\n").grid().text == "ab\ncd")
+        #expect(Input("old\rmac\r").lines == ["oldmac"])
+    }
+
     @Test func gridRejectsRaggedLines() {
         #expect(throws: SolutionError.self) { try Input("ab\nc\n").grid() }
         let grid = try? Input("ab\ncd\n").grid()
